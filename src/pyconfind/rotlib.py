@@ -90,6 +90,16 @@ class RotamerLibrary:
         pair isn't present in BEBL — which happens for the rounded labels at
         the wrap-around (phi ≥ 175 rounds to 180, with no ``BIN 180`` entry) —
         we fall back to the wildcard ``BIN * *``.
+
+        .. note::
+
+            MSL's :cpp:func:`SystemRotamerLoader::loadRotamers` indexes the
+            rotamer weight array by the in-bin iteration index (0..nr-1), not
+            by the CONFIDX from BEBL. For non-canonical bins (``BIN * *`` and
+            non-contiguous CONFIDX lists) this means the *weights* used are
+            the first ``nr`` entries of the EBL table, even when the
+            *conformations* come from a different region of the table. We
+            replicate this so output matches the reference binary byte-for-byte.
         """
         tmpl = self.residues[resname]
         if not self.is_backbone_dependent:
@@ -105,8 +115,11 @@ class RotamerLibrary:
             key = (resname, pi, si)
             if key not in self.bin_index:
                 key = (resname, _WILDCARD_BIN, _WILDCARD_BIN)
-        idx = self.bin_index[key]
-        return tmpl.confs[idx], tmpl.weights[idx]
+        conf_idx = self.bin_index[key]
+        nr = conf_idx.size
+        # Weights come from the first ``nr`` slots of the EBL table —
+        # *not* from the CONFIDX-selected slots. See note above.
+        return tmpl.confs[conf_idx], tmpl.weights[:nr]
 
 
 def _bin_key(angle: float, width: float) -> int:

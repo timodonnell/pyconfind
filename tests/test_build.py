@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from pyconfind.build import build_position_rotamers
+from pyconfind.contacts import compute_contacts
 from pyconfind.pdb import read_pdb
 from pyconfind.rotlib import load_library
 from pyconfind.structure import dihedral_deg, positions_from_atoms
@@ -96,6 +97,101 @@ def test_crwdnes_matches_cpp(examples_dir: Path, rotlib_dir: Path, pdb_name: str
             f"{pdb_name} pos {key} {pr.position.resname}: "
             f"crwdnes={pr.fraction_pruned:.6f} vs C++ {golden[key]:.6f}"
         )
+
+
+@pytest.mark.parametrize(
+    "pdb_name",
+    [
+        "example0000.pdb",
+        "example0001.pdb",
+        "example0002.pdb",
+        "example0003.pdb",
+        "example0004.pdb",
+        "example0005.pdb",
+        "example0006.pdb",
+        "example0007.pdb",
+        "example0008.pdb",
+    ],
+)
+def test_contact_degrees_match_cpp(examples_dir: Path, rotlib_dir: Path, pdb_name: str) -> None:
+    """Each per-pair contact degree must match the C++ output."""
+    pdb_path = examples_dir / pdb_name
+    golden_path = (
+        Path(__file__).resolve().parent / "golden" / (pdb_path.stem + ".cont")
+    )
+    if not golden_path.exists():
+        pytest.skip(f"golden output missing: {golden_path}")
+    atoms = read_pdb(pdb_path)
+    if len(atoms) == 0:
+        pytest.skip(f"{pdb_name} has no legal atoms")
+    positions = positions_from_atoms(atoms)
+    lib = load_library(rotlib_dir)
+    result = build_position_rotamers(positions, lib)
+    report = compute_contacts(result)
+
+    golden: dict[tuple[str, str], float] = {}
+    for line in golden_path.read_text().splitlines():
+        parts = line.split("\t")
+        if parts[0] == "contact":
+            golden[(parts[1], parts[2])] = float(parts[3])
+
+    our: dict[tuple[str, str], float] = {}
+    for c in report.contacts:
+        p_i = result[c.pos_i].position
+        p_j = result[c.pos_j].position
+        our[(f"{p_i.chain},{p_i.resnum}", f"{p_j.chain},{p_j.resnum}")] = c.degree
+
+    assert golden, f"no contact rows in golden for {pdb_name}"
+    for key, val in golden.items():
+        ours = our.get(key, 0.0)
+        assert abs(ours - val) < 1e-5, (
+            f"{pdb_name} contact {key}: mine={ours:.7f} C++={val:.7f}"
+        )
+
+
+@pytest.mark.parametrize(
+    "pdb_name",
+    ["example0000.pdb", "example0002.pdb", "example0007.pdb", "example0008.pdb"],
+)
+def test_freedom_and_sumcond_match_cpp(
+    examples_dir: Path, rotlib_dir: Path, pdb_name: str
+) -> None:
+    """Per-position freedom and sumcond rows must match the C++ output."""
+    pdb_path = examples_dir / pdb_name
+    golden_path = (
+        Path(__file__).resolve().parent / "golden" / (pdb_path.stem + ".cont")
+    )
+    if not golden_path.exists():
+        pytest.skip(f"golden output missing: {golden_path}")
+    atoms = read_pdb(pdb_path)
+    if len(atoms) == 0:
+        pytest.skip(f"{pdb_name} has no legal atoms")
+    positions = positions_from_atoms(atoms)
+    lib = load_library(rotlib_dir)
+    result = build_position_rotamers(positions, lib)
+    report = compute_contacts(result)
+
+    gold_sumcond: dict[str, float] = {}
+    gold_freedom: dict[str, float] = {}
+    for line in golden_path.read_text().splitlines():
+        parts = line.split("\t")
+        if parts[0] == "sumcond":
+            gold_sumcond[parts[1]] = float(parts[2])
+        elif parts[0] == "freedom":
+            gold_freedom[parts[1]] = float(parts[2])
+
+    for i, pr in enumerate(result):
+        key = f"{pr.position.chain},{pr.position.resnum}"
+        if key in gold_sumcond:
+            assert abs(report.sum_contact_degree[i] - gold_sumcond[key]) < 1e-5, (
+                f"{pdb_name} sumcond {key}: mine={report.sum_contact_degree[i]:.7f} "
+                f"C++={gold_sumcond[key]:.7f}"
+            )
+        if key in gold_freedom:
+            assert abs(report.freedom[i] - gold_freedom[key]) < 1e-5, (
+                f"{pdb_name} freedom {key}: mine={report.freedom[i]:.7f} "
+                f"C++={gold_freedom[key]:.7f}"
+            )
 
 
 def test_permanent_contacts_example_with_perm(examples_dir: Path, rotlib_dir: Path) -> None:

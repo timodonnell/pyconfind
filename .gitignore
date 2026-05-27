@@ -2,6 +2,9 @@
 # upstream confind tarball — see scripts/build-reference.sh).
 /original-source/
 
+# Claude Code session state.
+/.claude/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
