@@ -37,6 +37,9 @@ from pathlib import Path
 import numpy as np
 
 
+_WILDCARD_BIN: int = -10_000  # sentinel used internally for ``BIN * *``
+
+
 @dataclass(frozen=True, slots=True)
 class ResidueICTemplate:
     """Internal-coord template for one residue type.
@@ -82,33 +85,47 @@ class RotamerLibrary:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Return ``(confs, weights)`` for the given residue (and phi/psi if bb-dep).
 
-        For backbone-dependent libraries, passing ``phi=None`` or ``psi=None``
-        selects the wildcard ``BIN * *`` fallback that the library defines for
-        terminal residues where the dihedral is undefined.
+        Matches MSL semantics: phi/psi are rounded to bin labels (multiples of
+        the bin width, truncated toward zero). If the resulting (phi, psi)
+        pair isn't present in BEBL — which happens for the rounded labels at
+        the wrap-around (phi ≥ 175 rounds to 180, with no ``BIN 180`` entry) —
+        we fall back to the wildcard ``BIN * *``.
         """
         tmpl = self.residues[resname]
         if not self.is_backbone_dependent:
             return tmpl.confs, tmpl.weights
         assert self.phi_bin is not None and self.psi_bin is not None
         assert self.bin_index is not None
+        key: tuple[str, int, int]
         if phi is None or psi is None:
-            pi, si = -1, -1
+            key = (resname, _WILDCARD_BIN, _WILDCARD_BIN)
         else:
-            pi = _bin_index(phi, self.phi_bin)
-            si = _bin_index(psi, self.psi_bin)
-        idx = self.bin_index[(resname, pi, si)]
+            pi = _bin_key(phi, self.phi_bin)
+            si = _bin_key(psi, self.psi_bin)
+            key = (resname, pi, si)
+            if key not in self.bin_index:
+                key = (resname, _WILDCARD_BIN, _WILDCARD_BIN)
+        idx = self.bin_index[key]
         return tmpl.confs[idx], tmpl.weights[idx]
 
 
-def _bin_index(angle: float, width: float) -> int:
-    """Bin a dihedral angle in degrees onto a lattice with given width.
+def _bin_key(angle: float, width: float) -> int:
+    """Round a dihedral angle to its MSL bin key.
 
-    Bins start at -180 with the given width; -180 maps to 0, -180 + width to 1,
-    etc. Out-of-range angles wrap into [-180, 180).
+    MSL's :cpp:func:`RotamerLibrary::getPhiPsiBin` rounds the angle to a
+    multiple of ``width`` using C truncation toward zero:
+
+    * positive angles: ``width * trunc((angle + width/2) / width)``
+    * negative angles: ``width * trunc((angle - width/2) / width)``
+
+    The result is the bin's *label* (e.g. -180, -170, ..., 170, occasionally
+    180 for angles ≥ 175). Lookups in :class:`RotamerLibrary` use this label
+    directly and fall back to the wildcard bin if it is not present in BEBL.
     """
-    # Wrap to [-180, 180)
-    a = ((angle + 180.0) % 360.0) - 180.0
-    return int((a - (-180.0)) // width)
+    half = width / 2.0
+    if angle < 0:
+        return int(width * int((angle - half) / width))
+    return int(width * int((angle + half) / width))
 
 
 def parse_ebl(path: str | Path) -> dict[str, ResidueICTemplate]:
@@ -252,16 +269,12 @@ def parse_bebl(
         if line.startswith("BIN"):
             assert phi_bin is not None and psi_bin is not None
             parts = line.split()
-            # ``BIN * *`` is the fallback used when phi or psi is undefined
-            # (terminal residues etc.). We store it under bin index (-1, -1).
+            # ``BIN * *`` is the wildcard used when phi/psi don't round to a
+            # bin present in BEBL.
             if parts[1] == "*" or parts[2] == "*":
-                cur_bin = (-1, -1)
+                cur_bin = (_WILDCARD_BIN, _WILDCARD_BIN)
             else:
-                phi_lo = float(parts[1])
-                psi_lo = float(parts[2])
-                pi = _bin_index(phi_lo, phi_bin)
-                si = _bin_index(psi_lo, psi_bin)
-                cur_bin = (pi, si)
+                cur_bin = (int(float(parts[1])), int(float(parts[2])))
             continue
         if line.startswith("LEVNUM"):
             cur_levnum = int(line.split()[1])

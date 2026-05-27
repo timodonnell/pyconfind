@@ -162,15 +162,13 @@ def test_ic_builder_full_sweep_example0000(examples_dir: Path) -> None:
     for pos_idx in range(3):
         backbone = _ala_backbone_for(pos_idx)
         for aa, heavy_atoms in sidechain_heavy.items():
-            fallback = lib.bin_index.get((aa, -1, -1))
-            if fallback is None:
+            try:
+                confs_w, weights_w = lib.rotamers_for(aa, phi=None, psi=None)
+            except KeyError:
                 continue
             tmpl = lib.residues[aa]
-            placed = place_rotamers(
-                tmpl, backbone,
-                confs=tmpl.confs[fallback], weights=tmpl.weights[fallback]
-            )
-            for r in range(len(fallback)):
+            placed = place_rotamers(tmpl, backbone, confs=confs_w, weights=weights_w)
+            for r in range(confs_w.shape[0]):
                 key = ("A", pos_idx + 1, aa, r)
                 if key not in golden:
                     continue
@@ -204,21 +202,18 @@ def test_ic_builder_arg_against_cpp_terminus(examples_dir: Path) -> None:
 
     golden = _parse_golden_rotamers(rout)
     lib = load_library(rotlib_dir)
-    fallback_idx = lib.bin_index[("ARG", -1, -1)]
+    confs_w, weights_w = lib.rotamers_for("ARG", phi=None, psi=None)
     arg = lib.residues["ARG"]
     backbone = {
         "N": np.array([2.143, 1.328, 0.0]),
         "C": np.array([0.0, 0.0, 0.0]),
         "CA": np.array([1.539, 0.0, 0.0]),
     }
-    placed = place_rotamers(
-        arg, backbone,
-        confs=arg.confs[fallback_idx], weights=arg.weights[fallback_idx]
-    )
+    placed = place_rotamers(arg, backbone, confs=confs_w, weights=weights_w)
     # 33 of 34 survive pruning; index 9 (rotamer 10) clashes with backbone.
     # The golden output skips the pruned rotamer; we walk only those present.
     n_compared = 0
-    for r in range(len(fallback_idx)):
+    for r in range(confs_w.shape[0]):
         key = ("A", 1, "ARG", r)
         if key not in golden:
             continue

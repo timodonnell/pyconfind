@@ -8,21 +8,23 @@ import numpy as np
 import pytest
 
 from pyconfind.rotlib import (
-    _bin_index,
+    _bin_key,
     load_library,
     parse_bebl,
     parse_ebl,
 )
 
 
-def test_bin_index_basic() -> None:
-    assert _bin_index(-180.0, 10.0) == 0
-    assert _bin_index(-170.0, 10.0) == 1
-    assert _bin_index(0.0, 10.0) == 18
-    assert _bin_index(170.0, 10.0) == 35
-    # Wraps
-    assert _bin_index(180.0, 10.0) == 0
-    assert _bin_index(-190.0, 10.0) == 35
+def test_bin_key_matches_msl_rounding() -> None:
+    # MSL: bin label = width * trunc((angle ± width/2) / width)
+    assert _bin_key(-180.0, 10.0) == -180
+    assert _bin_key(-175.0, 10.0) == -180
+    assert _bin_key(-170.0, 10.0) == -170
+    assert _bin_key(0.0, 10.0) == 0
+    assert _bin_key(170.0, 10.0) == 170
+    assert _bin_key(174.99, 10.0) == 170
+    # phi == 180 rounds to bin 180, which is NOT in BEBL → caller falls back.
+    assert _bin_key(180.0, 10.0) == 180
 
 
 def test_parse_ebl_ala(ebl_path: Path) -> None:
@@ -96,9 +98,9 @@ def test_parse_bebl_header(bebl_path: Path) -> None:
     assert phi_bin == 10.0
     assert psi_bin == 10.0
     # ALA bin (-180,-180) -> all CONFIDX 0 (only one ALA rotamer)
-    np.testing.assert_array_equal(idx[("ALA", 0, 0)], [0])
+    np.testing.assert_array_equal(idx[("ALA", -180, -180)], [0])
     # ARG bin (-180,-180) -> 75 CONFIDX values
-    arg_bin = idx[("ARG", 0, 0)]
+    arg_bin = idx[("ARG", -180, -180)]
     assert arg_bin.size == 75
     np.testing.assert_array_equal(arg_bin[:5], [0, 1, 2, 3, 4])
 
@@ -111,6 +113,16 @@ def test_load_library_bb_dep(rotlib_dir: Path) -> None:
     confs, weights = lib.rotamers_for("ARG", phi=-180.0, psi=-180.0)
     assert confs.shape[0] == 75
     assert weights.size == 75
+
+
+def test_load_library_phi_180_falls_back_to_wildcard(rotlib_dir: Path) -> None:
+    """phi=180 rounds to bin 180, which is not in BEBL. MSL falls back to
+    ``BIN * *`` — we must too."""
+    lib = load_library(rotlib_dir)
+    confs_180, _ = lib.rotamers_for("ARG", phi=180.0, psi=180.0)
+    confs_wild, _ = lib.rotamers_for("ARG", phi=None, psi=None)
+    assert confs_180.shape == confs_wild.shape
+    np.testing.assert_array_equal(confs_180, confs_wild)
 
 
 def test_load_library_bb_indep(ebl_path: Path) -> None:
