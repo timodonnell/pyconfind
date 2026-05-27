@@ -154,23 +154,27 @@ def compute_contacts(
     # Sort contacts the same way the C++ does (by (pos_i, pos_j) ascending).
     contacts.sort(key=lambda c: (c.pos_i, c.pos_j))
 
-    # Per-position freedom (confind.cpp:797-826).
+    # Per-position freedom (confind.cpp:797-826). When orig_num_rotamers is
+    # zero (CA-only inputs, mostly), the C++ produces NaN via sqrt(0)/0 — we
+    # match that to keep text output byte-identical.
     freedom = np.empty(N, dtype=np.float64)
-    for i, pr in enumerate(positions):
-        cp = collision_probs[i]
-        orig = pr.num_rotamers_placed
-        if orig == 0:
-            freedom[i] = 999.0
-            continue
-        if freedom_type == 1:
-            n = float((cp / 100.0 < 0.5).sum())
-            freedom[i] = n / orig
-        elif freedom_type == 2:
-            n1 = float((cp / 100.0 < 0.5).sum())
-            n2 = float((cp / 100.0 < 2.0).sum())
-            freedom[i] = float(np.sqrt((n1 * n1 + n2 * n2) / 2.0)) / orig
-        else:
-            freedom[i] = 999.0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        for i, pr in enumerate(positions):
+            cp = collision_probs[i]
+            orig = pr.num_rotamers_placed
+            if freedom_type == 1:
+                n = float((cp / 100.0 < 0.5).sum())
+                freedom[i] = n / orig if orig != 0 else float("nan")
+            elif freedom_type == 2:
+                n1 = float((cp / 100.0 < 0.5).sum())
+                n2 = float((cp / 100.0 < 2.0).sum())
+                freedom[i] = (
+                    float(np.sqrt((n1 * n1 + n2 * n2) / 2.0)) / orig
+                    if orig != 0
+                    else float("nan")
+                )
+            else:
+                freedom[i] = 999.0
 
     crwdnes = np.array([pr.fraction_pruned for pr in positions], dtype=np.float64)
     perm = tuple(pr.permanent_contacts for pr in positions)
