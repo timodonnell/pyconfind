@@ -1,0 +1,43 @@
+contact	A,1	A,2	0.000215	GLY	LYS
+contact	A,1	A,3	0.002425	GLY	LYS
+contact	A,1	A,4	0.001029	GLY	MET
+contact	A,1	A,6	0.000249	GLY	VAL
+contact	A,2	A,3	0.000037	LYS	LYS
+contact	A,2	A,4	0.186372	LYS	MET
+contact	A,2	A,5	0.000000	LYS	VAL
+contact	A,2	A,6	0.000040	LYS	VAL
+contact	A,3	A,4	0.000000	LYS	MET
+contact	A,3	A,5	0.003178	LYS	VAL
+contact	A,4	A,5	0.000007	MET	VAL
+contact	A,4	A,6	0.036208	MET	VAL
+contact	A,4	A,7	0.000001	MET	ALA
+contact	A,5	A,6	0.000001	VAL	VAL
+contact	A,5	A,7	0.108023	VAL	ALA
+contact	A,6	A,7	0.000002	VAL	ALA
+contact	A,6	A,8	0.013791	VAL	LEU
+contact	A,7	A,8	0.000131	ALA	LEU
+sumcond	A,1	0.003918	GLY
+sumcond	A,2	0.186664	LYS
+sumcond	A,3	0.005639	LYS
+sumcond	A,4	0.223617	MET
+sumcond	A,5	0.111208	VAL
+sumcond	A,6	0.050292	VAL
+sumcond	A,7	0.108157	ALA
+sumcond	A,8	0.013922	LEU
+crwdnes	A,1	0.047619	GLY
+crwdnes	A,2	0.100000	LYS
+crwdnes	A,3	0.013208	LYS
+crwdnes	A,4	0.179245	MET
+crwdnes	A,5	0.022642	VAL
+crwdnes	A,6	0.054717	VAL
+crwdnes	A,7	0.041509	ALA
+crwdnes	A,8	0.000000	LEU
+freedom	A,1	0.949739	GLY
+freedom	A,2	0.754652	LYS
+freedom	A,3	0.985850	LYS
+freedom	A,4	0.771495	MET
+freedom	A,5	0.967971	VAL
+freedom	A,6	0.933099	VAL
+freedom	A,7	0.901899	ALA
+freedom	A,8	0.981656	LEU
+SEQUENCE: GLY LYS LYS MET VAL VAL ALA LEU
