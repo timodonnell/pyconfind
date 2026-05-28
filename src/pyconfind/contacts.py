@@ -229,27 +229,31 @@ def _pair_contact_degree(
         overall_lo_j > overall_hi_i + contact_dist
     ):
         return 0.0
-    # For each atom of i, find atoms of j within contact_dist. Aggregate by
-    # (i_owner, j_owner) to get the set of contacting rotamer pairs.
-    neighbors = tree_j.query_ball_point(xyz_i, r=contact_dist)
-    # Build a sparse boolean matrix of in-contact rotamer pairs.
-    contact_pairs: set[tuple[int, int]] = set()
-    for ai, js in enumerate(neighbors):
-        if not js:
-            continue
-        ri = int(owner_i[ai])
-        for aj in js:
-            rj = int(owner_j[aj])
-            contact_pairs.add((ri, rj))
-    if not contact_pairs:
+    # All atom pairs (one from i, one from j) within contact_dist, as flat
+    # index arrays. sparse_distance_matrix returns a COO matrix whose row/col
+    # are the i/j atom indices — this keeps the heavy lifting in C instead of
+    # a 30M-iteration Python loop.
+    coo = tree_i.sparse_distance_matrix(
+        tree_j, contact_dist, output_type="coo_matrix"
+    )
+    if coo.nnz == 0:
         return 0.0
-    # Accumulate contact mass + collision probabilities.
-    c = 0.0
-    for ri, rj in contact_pairs:
-        pij = float(weights_i[ri] * weights_j[rj])
-        c += pij
-        coll_probs_i[ri] += float(weights_j[rj])
-        coll_probs_j[rj] += float(weights_i[ri])
+    ri_all = owner_i[coo.row]
+    rj_all = owner_j[coo.col]
+    # Reduce to unique contacting (rotamer_i, rotamer_j) pairs. Encode each
+    # pair as a single integer to use np.unique.
+    encoded = ri_all.astype(np.int64) * R_j + rj_all.astype(np.int64)
+    uniq = np.unique(encoded)
+    ri_u = (uniq // R_j).astype(np.intp)
+    rj_u = (uniq % R_j).astype(np.intp)
+
+    wi_u = weights_i[ri_u]
+    wj_u = weights_j[rj_u]
+    c = float(np.dot(wi_u, wj_u))
+    # Collision-probability accumulation (scatter-add by rotamer).
+    np.add.at(coll_probs_i, ri_u, wj_u)
+    np.add.at(coll_probs_j, rj_u, wi_u)
+
     if n == 0.0:
         # All weights on one side are zero; contact degree is 0/0 = undefined.
         # MSL returns NaN here, which downstream filters drop via ``d > 0``.
