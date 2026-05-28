@@ -120,6 +120,21 @@ def compute_contacts(
     for xyz in stacked_xyz:
         trees.append(cKDTree(xyz) if xyz.shape[0] > 0 else None)
 
+    # Precompute per-position constants used by the inner loop — these don't
+    # change between pairs, so computing them once (rather than per pair)
+    # removes hundreds of thousands of redundant ufunc reductions.
+    overall_lo: list[np.ndarray] = []
+    overall_hi: list[np.ndarray] = []
+    sum_w: list[float] = []
+    for lo, hi, w in zip(rot_bbox_lo, rot_bbox_hi, rot_weights, strict=True):
+        if lo.shape[0] == 0:
+            overall_lo.append(np.full(3, np.inf))
+            overall_hi.append(np.full(3, -np.inf))
+        else:
+            overall_lo.append(lo.min(axis=0))
+            overall_hi.append(hi.max(axis=0))
+        sum_w.append(float(w.sum()))
+
     # Use a CA-distance prefilter (cKDTree on CA) — equivalent to the C++ PCA
     # sweep, but order-independent.
     valid = ~np.isnan(ca[:, 0])
@@ -140,8 +155,8 @@ def compute_contacts(
             if i > j:
                 i, j = j, i
             d = _pair_contact_degree(
-                stacked_xyz[i], stacked_owner[i], trees[i], rot_bbox_lo[i], rot_bbox_hi[i],
-                stacked_xyz[j], stacked_owner[j], trees[j], rot_bbox_lo[j], rot_bbox_hi[j],
+                stacked_owner[i], trees[i], overall_lo[i], overall_hi[i], sum_w[i],
+                stacked_owner[j], trees[j], overall_lo[j], overall_hi[j], sum_w[j],
                 rot_weights[i], rot_weights[j],
                 collision_probs[i], collision_probs[j],
                 contact_dist,
@@ -188,43 +203,40 @@ def compute_contacts(
 
 
 def _pair_contact_degree(
-    xyz_i: np.ndarray,
     owner_i: np.ndarray,
     tree_i: cKDTree | None,
-    bbox_lo_i: np.ndarray,
-    bbox_hi_i: np.ndarray,
-    xyz_j: np.ndarray,
+    overall_lo_i: np.ndarray,
+    overall_hi_i: np.ndarray,
+    sum_wi: float,
     owner_j: np.ndarray,
     tree_j: cKDTree | None,
-    bbox_lo_j: np.ndarray,
-    bbox_hi_j: np.ndarray,
+    overall_lo_j: np.ndarray,
+    overall_hi_j: np.ndarray,
+    sum_wj: float,
     weights_i: np.ndarray,
     weights_j: np.ndarray,
     coll_probs_i: np.ndarray,
     coll_probs_j: np.ndarray,
     contact_dist: float,
 ) -> float:
-    """Return contact degree for one pair of positions; update collision probs in-place."""
+    """Return contact degree for one pair of positions; update collision probs in-place.
+
+    The per-position constants (``overall_lo/hi``, ``sum_w``) are precomputed
+    by the caller since they're invariant across pairs.
+    """
     R_i = weights_i.size
     R_j = weights_j.size
     if R_i == 0 or R_j == 0 or tree_i is None or tree_j is None:
         return 0.0
     # Normalizer: sum over all (ri, rj) of p1*p2 = (sum p1) * (sum p2).
-    sum_wi = float(weights_i.sum())
-    sum_wj = float(weights_j.sum())
     n = sum_wi * sum_wj
     # NOTE: we do *not* early-return when n == 0. MSL's contactProbability
     # accumulates collision-probability mass into cp[i][ri] += p2 even when
     # the i-side weight is zero, which can happen for rotamers whose library
     # weight is 0.0 (the EBL table contains a few such entries). Matching
     # that requires running the contact loop and updating cp regardless.
-    # Bounding-box prefilter: rotamers of i and j that can possibly interact.
-    # If position i's overall bbox is far from position j's overall bbox, no
-    # contact possible (cheap reject).
-    overall_lo_i = bbox_lo_i.min(axis=0)
-    overall_hi_i = bbox_hi_i.max(axis=0)
-    overall_lo_j = bbox_lo_j.min(axis=0)
-    overall_hi_j = bbox_hi_j.max(axis=0)
+    # Bounding-box prefilter: if position i's overall bbox is far from
+    # position j's overall bbox, no contact is possible (cheap reject).
     if np.any(overall_lo_i > overall_hi_j + contact_dist) or np.any(
         overall_lo_j > overall_hi_i + contact_dist
     ):
