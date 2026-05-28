@@ -17,7 +17,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Fast JIT-compiled, multi-threaded contact backend. Optional: the pure
+# NumPy/SciPy reference is always available as a fallback.
+fast = ["numba>=0.59"]
 dev = [
+    "numba>=0.59",
     "pytest>=7",
     "pytest-cov",
     "ruff>=0.4",
@@ -52,5 +56,5 @@ strict = true
 disallow_any_generics = false
 
 [[tool.mypy.overrides]]
-module = ["scipy.*"]
+module = ["scipy.*", "numba.*"]
 ignore_missing_imports = true

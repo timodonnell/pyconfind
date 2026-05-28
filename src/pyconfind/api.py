@@ -16,6 +16,7 @@ Example
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,6 +26,25 @@ from .pdb import filter_atoms_by_position, read_pdb
 from .rotlib import RotamerLibrary, load_library
 from .selection import select_residue_mask
 from .structure import positions_from_atoms
+
+
+def _select_contact_backend(backend: str) -> Callable[..., ContactReport]:
+    """Return the contact-degree function for the requested backend.
+
+    ``"auto"`` prefers the Numba backend and silently falls back to the pure
+    Python reference if Numba (or llvmlite) is unavailable.
+    """
+    if backend not in ("auto", "numba", "python"):
+        raise ValueError(f"unknown backend {backend!r}; use auto/numba/python")
+    if backend == "python":
+        return compute_contacts
+    try:
+        from .contacts_numba import compute_contacts_numba
+    except ImportError:
+        if backend == "numba":
+            raise
+        return compute_contacts
+    return compute_contacts_numba
 
 
 @dataclass(frozen=True)
@@ -63,6 +83,7 @@ def analyze(
     do_not_count_cb: bool = True,
     renumber: bool = False,
     native_only: bool = False,
+    backend: str = "auto",
 ) -> Analysis:
     """Run the full confind pipeline on a PDB file.
 
@@ -99,6 +120,11 @@ def analyze(
     native_only
         New mode: only substitute the *native* AA at each position instead
         of all 18. Still uses all rotamers of that AA.
+    backend
+        Contact-degree backend: ``"numba"`` (JIT-compiled, multi-threaded),
+        ``"python"`` (pure NumPy/SciPy reference), or ``"auto"`` (the default —
+        use Numba if importable, else fall back to the reference). Both
+        backends produce results identical to ~1e-6 (the output precision).
     """
     pdb_path = Path(pdb_path)
     if isinstance(rotamer_library, RotamerLibrary):
@@ -128,7 +154,8 @@ def analyze(
         native_only=native_only,
         focus_mask=focus_mask,
     )
-    report = compute_contacts(
+    contact_fn = _select_contact_backend(backend)
+    report = contact_fn(
         rot_results,
         dcut=dcut,
         contact_dist=contact_distance,

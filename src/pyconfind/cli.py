@@ -49,6 +49,7 @@ from .rotlib import load_library
 @click.option("--dcut", "dcut", type=float, default=25.0, show_default=True, help="CA-CA distance cutoff for pair consideration.")
 @click.option("--contact-dist", "contact_dist", type=float, default=3.0, show_default=True, help="Sidechain-sidechain contact distance cutoff.")
 @click.option("--clash-dist", "clash_dist", type=float, default=2.0, show_default=True, help="Backbone-clash distance cutoff.")
+@click.option("--backend", "backend", type=click.Choice(["auto", "numba", "python"]), default="auto", show_default=True, help="Contact-degree backend (numba = JIT/multithreaded, python = reference).")
 def main(
     pdb_file: Path | None,
     pdb_list_file: Path | None,
@@ -66,6 +67,7 @@ def main(
     dcut: float,
     contact_dist: float,
     clash_dist: float,
+    backend: str,
 ) -> None:
     """Analyze rotamer contacts in protein structures.
 
@@ -120,6 +122,7 @@ def main(
             dcut=dcut,
             contact_distance=contact_dist,
             clash_distance=clash_dist,
+            backend=backend,
         )
         options = OutputOptions(
             include_phi_psi=include_pp,
