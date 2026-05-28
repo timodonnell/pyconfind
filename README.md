@@ -41,6 +41,15 @@ pip install -e .             # pure-Python reference backend
 pip install -e ".[fast]"     # + Numba backend
 ```
 
+## Example notebook
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timodonnell/pyconfind/blob/main/examples/pyconfind_demo.ipynb)
+
+[`examples/pyconfind_demo.ipynb`](examples/pyconfind_demo.ipynb) is a runnable
+walkthrough (install → fetch a PDB → analyze via the library API → visualize a
+contact map, per-residue scores, and a 3D structure colored by contact degree).
+Click the badge to run it on a free Colab CPU runtime.
+
 ## Quick start
 
 CLI (matches the original `confind` flag names, so existing pipelines drop in):
