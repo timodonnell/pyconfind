@@ -151,6 +151,101 @@ def read_pdb(
             zs.append(z)
             occs.append(occ)
 
+    return _finalize_atoms(
+        chains, resnums, icodes, resnames, names, altlocs, elements,
+        xs, ys, zs, occs, renumber=renumber,
+    )
+
+
+def read_structure(
+    path: str | Path,
+    *,
+    legal_only: bool = True,
+    altloc: str = "A",
+    renumber: bool = False,
+) -> Atoms:
+    """Read a PDB or mmCIF structure via gemmi into :class:`Atoms`.
+
+    Format is detected from the content/extension by gemmi. Author numbering
+    is used (``auth_asym_id`` / ``auth_seq_id`` / insertion code), matching the
+    chain/residue identifiers of the classic PDB format so that output is
+    consistent across both input formats. Only the first model is used.
+
+    Parameters mirror :func:`read_pdb` (``legal_only``, ``altloc``,
+    ``renumber``).
+    """
+    import gemmi
+
+    st = gemmi.read_structure(str(path))
+    chains: list[str] = []
+    resnums: list[int] = []
+    icodes: list[str] = []
+    resnames: list[str] = []
+    names: list[str] = []
+    altlocs: list[str] = []
+    elements: list[str] = []
+    xs: list[float] = []
+    ys: list[float] = []
+    zs: list[float] = []
+    occs: list[float] = []
+
+    if len(st) > 0:
+        model = st[0]
+        for chain in model:
+            cname = chain.name.strip() or "_"
+            for res in chain:
+                resname = res.name
+                if legal_only and resname not in LEGAL_RESIDUE_NAMES:
+                    continue
+                ic = res.seqid.icode
+                ic = "" if ic in ("\x00", "", " ") else ic
+                num = res.seqid.num
+                if num is None:
+                    continue
+                resnum = int(num)
+                for atom in res:
+                    alc = atom.altloc
+                    alc = "" if alc in ("\x00", "", " ") else alc
+                    if alc not in ("", altloc):
+                        continue
+                    chains.append(cname)
+                    resnums.append(resnum)
+                    icodes.append(ic)
+                    resnames.append(resname)
+                    names.append(atom.name)
+                    altlocs.append(alc)
+                    elements.append(atom.element.name)
+                    xs.append(atom.pos.x)
+                    ys.append(atom.pos.y)
+                    zs.append(atom.pos.z)
+                    occs.append(atom.occ)
+
+    return _finalize_atoms(
+        chains, resnums, icodes, resnames, names, altlocs, elements,
+        xs, ys, zs, occs, renumber=renumber,
+    )
+
+
+def _finalize_atoms(
+    chains: list[str],
+    resnums: list[int],
+    icodes: list[str],
+    resnames: list[str],
+    names: list[str],
+    altlocs: list[str],
+    elements: list[str],
+    xs: list[float],
+    ys: list[float],
+    zs: list[float],
+    occs: list[float],
+    *,
+    renumber: bool,
+) -> Atoms:
+    """Assemble parallel per-atom lists into a finalized :class:`Atoms`.
+
+    Shared by the PDB and mmCIF readers: builds the NumPy arrays, reorders
+    positions to match MSL's chain ordering, and optionally renumbers.
+    """
     n = len(xs)
     chain_arr = np.asarray(chains, dtype="<U2") if n else np.zeros(0, dtype="<U2")
     resnum_arr = np.asarray(resnums, dtype=np.int32) if n else np.zeros(0, dtype=np.int32)

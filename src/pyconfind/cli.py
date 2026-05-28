@@ -33,7 +33,7 @@ from .rotlib import load_library
     context_settings={"help_option_names": ["-h", "--help"]},
     name="pyconfind",
 )
-@click.option("--p", "pdb_file", type=click.Path(exists=True, path_type=Path), help="Input PDB file.")
+@click.option("--p", "pdb_file", type=click.Path(exists=True, path_type=Path), help="Input structure file (PDB or mmCIF; format auto-detected).")
 @click.option("--pL", "pdb_list_file", type=click.Path(exists=True, path_type=Path), help="File listing PDB paths, one per line.")
 @click.option("--o", "out_file", type=click.Path(path_type=Path), help="Output file path. Stdout if omitted.")
 @click.option("--oL", "out_list_file", type=click.Path(path_type=Path), help="File listing output paths for batch mode.")

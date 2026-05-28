@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .build import PositionRotamers, build_position_rotamers
 from .contacts import ContactReport, compute_contacts
-from .pdb import filter_atoms_by_position, read_pdb
+from .pdb import filter_atoms_by_position, read_structure
 from .rotlib import RotamerLibrary, load_library
 from .selection import select_residue_mask
 from .structure import positions_from_atoms
@@ -131,11 +131,12 @@ def analyze(
         library = rotamer_library
     else:
         library = load_library(rotamer_library)
-    atoms = read_pdb(pdb_path, renumber=renumber)
+    # gemmi reads both PDB and mmCIF; format is auto-detected.
+    atoms = read_structure(pdb_path, renumber=renumber)
 
     # --psel: keep only residues whose CA satisfies the pre-selection. The
     # C++ applies this on the raw structure before protein-only filtering;
-    # we apply it after read_pdb (which already drops non-protein atoms).
+    # we apply it after reading (which already drops non-protein atoms).
     if pre_select is not None:
         pos_mask = select_residue_mask(atoms, pre_select)
         atoms = filter_atoms_by_position(atoms, pos_mask)

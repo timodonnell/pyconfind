@@ -56,6 +56,8 @@ CLI (matches the original `confind` flag names, so existing pipelines drop in):
 
 ```bash
 pyconfind --p input.pdb --rLib path/to/rotlibs --o out.cont
+# Inputs may be PDB or mmCIF (format auto-detected via gemmi):
+pyconfind --p input.cif --rLib path/to/rotlibs --o out.cont
 # Modern structured output:
 pyconfind --p input.pdb --rLib path/to/rotlibs --json --o out.json
 # Only consider the native AA at each position (no AA substitution):
