@@ -1,0 +1,169 @@
+contact	A,1	A,2	0.000896	GLY	LYS
+contact	A,1	A,3	0.000066	GLY	LYS
+contact	A,1	A,4	0.001716	GLY	MET
+contact	A,1	C,2	0.000133	GLY	ALA
+contact	A,2	A,3	0.000035	LYS	LYS
+contact	A,2	A,4	0.145998	LYS	MET
+contact	A,2	C,1	0.400646	LYS	ASP
+contact	A,2	C,2	0.447058	LYS	ALA
+contact	A,2	C,4	0.001427	LYS	VAL
+contact	A,3	B,13	0.005685	LYS	VAL
+contact	A,3	C,1	0.011737	LYS	ASP
+contact	A,4	A,6	0.018791	MET	VAL
+contact	A,4	C,1	0.001345	MET	ASP
+contact	A,4	C,2	0.497382	MET	ALA
+contact	A,4	C,4	0.145681	MET	VAL
+contact	A,5	A,7	0.002394	VAL	ALA
+contact	A,5	B,5	0.000046	VAL	ALA
+contact	A,5	B,6	0.159421	VAL	SER
+contact	A,5	B,7	0.000518	VAL	GLU
+contact	A,5	B,9	0.142940	VAL	LEU
+contact	A,5	B,10	0.259108	VAL	ALA
+contact	A,5	B,13	0.019441	VAL	VAL
+contact	A,5	C,3	0.133948	VAL	LEU
+contact	A,6	A,8	0.002716	VAL	LEU
+contact	A,6	C,2	0.000317	VAL	ALA
+contact	A,6	C,4	0.143002	VAL	VAL
+contact	A,6	C,6	0.024534	VAL	LEU
+contact	A,7	B,2	0.014466	ALA	LYS
+contact	A,7	B,3	0.049944	ALA	ASP
+contact	A,7	B,5	0.000069	ALA	ALA
+contact	A,7	B,6	0.395750	ALA	SER
+contact	A,7	B,7	0.000542	ALA	GLU
+contact	A,7	B,9	0.000943	ALA	LEU
+contact	A,7	B,10	0.000251	ALA	ALA
+contact	A,7	C,3	0.007518	ALA	LEU
+contact	A,7	C,5	0.310976	ALA	ILE
+contact	A,7	C,7	0.000321	ALA	THR
+contact	A,8	B,2	0.000252	LEU	LYS
+contact	A,8	C,6	0.071084	LEU	LEU
+contact	B,1	B,2	0.000377	ASP	LYS
+contact	B,1	B,3	0.132260	ASP	ASP
+contact	B,1	B,4	0.762693	ASP	PHE
+contact	B,1	B,7	0.003574	ASP	GLU
+contact	B,2	B,3	0.015042	LYS	ASP
+contact	B,2	B,5	0.059080	LYS	ALA
+contact	B,2	B,6	0.002884	LYS	SER
+contact	B,2	C,5	0.001145	LYS	ILE
+contact	B,2	C,7	0.000060	LYS	THR
+contact	B,3	B,4	0.009712	ASP	PHE
+contact	B,3	B,6	0.062988	ASP	SER
+contact	B,3	B,7	0.000475	ASP	GLU
+contact	B,3	C,3	0.000652	ASP	LEU
+contact	B,3	C,5	0.013970	ASP	ILE
+contact	B,4	B,5	0.000790	PHE	ALA
+contact	B,4	B,7	0.062623	PHE	GLU
+contact	B,4	B,8	0.000723	PHE	LYS
+contact	B,5	B,6	0.005313	ALA	SER
+contact	B,5	B,8	0.049557	ALA	LYS
+contact	B,5	B,9	0.001646	ALA	LEU
+contact	B,6	B,7	0.000788	SER	GLU
+contact	B,6	B,9	0.060861	SER	LEU
+contact	B,6	B,10	0.000691	SER	ALA
+contact	B,6	C,3	0.013001	SER	LEU
+contact	B,6	C,5	0.028956	SER	ILE
+contact	B,7	B,8	0.000776	GLU	LYS
+contact	B,7	B,10	0.090043	GLU	ALA
+contact	B,7	B,11	0.000620	GLU	GLU
+contact	B,7	C,3	0.016470	GLU	LEU
+contact	B,8	B,9	0.000784	LYS	LEU
+contact	B,8	B,11	0.050807	LYS	GLU
+contact	B,8	B,12	0.001905	LYS	LEU
+contact	B,9	B,10	0.000840	LEU	ALA
+contact	B,9	B,12	0.068787	LEU	LEU
+contact	B,9	B,13	0.021528	LEU	VAL
+contact	B,10	B,11	0.005491	ALA	GLU
+contact	B,10	B,13	0.005067	ALA	VAL
+contact	B,10	C,3	0.150474	ALA	LEU
+contact	B,11	B,12	0.006118	GLU	LEU
+contact	B,12	B,13	0.006248	LEU	VAL
+contact	C,1	C,2	0.125291	ASP	ALA
+contact	C,2	C,4	0.025596	ALA	VAL
+contact	C,3	C,5	0.004124	LEU	ILE
+contact	C,4	C,6	0.001366	VAL	LEU
+contact	C,5	C,7	0.042245	ILE	THR
+sumcond	A,1	0.002811	GLY
+sumcond	A,2	0.996060	LYS
+sumcond	A,3	0.017523	LYS
+sumcond	A,4	0.810913	MET
+sumcond	A,5	0.717817	VAL
+sumcond	A,6	0.189360	VAL
+sumcond	A,7	0.783174	ALA
+sumcond	A,8	0.074052	LEU
+sumcond	B,1	0.898904	ASP
+sumcond	B,2	0.093306	LYS
+sumcond	B,3	0.285042	ASP
+sumcond	B,4	0.836541	PHE
+sumcond	B,5	0.116501	ALA
+sumcond	B,6	0.730653	SER
+sumcond	B,7	0.176429	GLU
+sumcond	B,8	0.104551	LYS
+sumcond	B,9	0.298329	LEU
+sumcond	B,10	0.511965	ALA
+sumcond	B,11	0.063037	GLU
+sumcond	B,12	0.083057	LEU
+sumcond	B,13	0.057969	VAL
+sumcond	C,1	0.539019	ASP
+sumcond	C,2	1.095777	ALA
+sumcond	C,3	0.326187	LEU
+sumcond	C,4	0.317073	VAL
+sumcond	C,5	0.401415	ILE
+sumcond	C,6	0.096985	LEU
+sumcond	C,7	0.042626	THR
+crwdnes	A,1	0.000000	GLY
+crwdnes	A,2	0.069767	LYS
+crwdnes	A,3	0.267442	LYS
+crwdnes	A,4	0.104651	MET
+crwdnes	A,5	0.348837	VAL
+crwdnes	A,6	0.000000	VAL
+crwdnes	A,7	0.302326	ALA
+crwdnes	A,8	0.000000	LEU
+crwdnes	B,1	0.267442	ASP
+crwdnes	B,2	0.011628	LYS
+crwdnes	B,3	0.000000	ASP
+crwdnes	B,4	0.348837	PHE
+crwdnes	B,5	0.360465	ALA
+crwdnes	B,6	0.406977	SER
+crwdnes	B,7	0.360465	GLU
+crwdnes	B,8	0.337209	LYS
+crwdnes	B,9	0.360465	LEU
+crwdnes	B,10	0.430233	ALA
+crwdnes	B,11	0.337209	GLU
+crwdnes	B,12	0.348837	LEU
+crwdnes	B,13	0.174419	VAL
+crwdnes	C,1	0.546512	ASP
+crwdnes	C,2	0.058140	ALA
+crwdnes	C,3	0.011628	LEU
+crwdnes	C,4	0.255814	VAL
+crwdnes	C,5	0.000000	ILE
+crwdnes	C,6	0.209302	LEU
+crwdnes	C,7	0.011628	THR
+freedom	A,1	0.988440	GLY
+freedom	A,2	0.674268	LYS
+freedom	A,3	0.709683	LYS
+freedom	A,4	0.650176	MET
+freedom	A,5	0.473329	VAL
+freedom	A,6	0.932845	VAL
+freedom	A,7	0.503100	ALA
+freedom	A,8	1.000000	LEU
+freedom	B,1	0.528910	ASP
+freedom	B,2	0.965396	LYS
+freedom	B,3	0.871705	ASP
+freedom	B,4	0.474612	PHE
+freedom	B,5	0.639535	ALA
+freedom	B,6	0.437092	SER
+freedom	B,7	0.633748	GLU
+freedom	B,8	0.662791	LYS
+freedom	B,9	0.579123	LEU
+freedom	B,10	0.438327	ALA
+freedom	B,11	0.662791	GLU
+freedom	B,12	0.651163	LEU
+freedom	B,13	0.808328	VAL
+freedom	C,1	0.360371	ASP
+freedom	C,2	0.574906	ALA
+freedom	C,3	0.851819	LEU
+freedom	C,4	0.620543	VAL
+freedom	C,5	0.860229	ILE
+freedom	C,6	0.767794	LEU
+freedom	C,7	0.971087	THR
+SEQUENCE: GLY LYS LYS MET VAL VAL ALA LEU ASP LYS ASP PHE ALA SER GLU LYS LEU ALA GLU LEU VAL ASP ALA LEU VAL ILE LEU THR

@@ -1,13 +1,20 @@
 # pyconfind
 
+[![CI](https://github.com/timodonnell/pyconfind/actions/workflows/ci.yml/badge.svg)](https://github.com/timodonnell/pyconfind/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+
 A modern Python implementation of [confind](https://grigoryanlab.org/confind/) —
 the rotamer-based protein side-chain contact-degree analysis introduced in
 Zheng & Grigoryan's work on tertiary structural motifs.
 
 The Python output is **byte-for-byte identical** to the upstream C++ binary
-on **all 200** real structures tested (100 from the PDB + 100 from the
-AlphaFold DB; see [docs/stress_test_results.md](docs/stress_test_results.md))
-and on all 11 example structures shipped with the original codebase.
+on **248 of 253** real structures tested (100 single-chain PDB + 100 AlphaFold
+DB + 50 multi-chain + 3 high-resolution; see
+[docs/stress_test_results.md](docs/stress_test_results.md)) and on all 11
+example structures shipped with the original codebase. The 5 exceptions are
+insertion-code structures where the C++ ordering relies on undefined behavior
+(documented).
 
 pyconfind is also faster than the C++ binary, with two interchangeable
 contact-degree backends (both byte-identical to the reference):
@@ -17,8 +24,13 @@ contact-degree backends (both byte-identical to the reference):
   that is ~2-3× faster again.
 
 With the Numba backend and the rotamer library amortized across a batch, the
-per-structure analysis is **~8-18× faster** than the C++ binary. See
-[docs/benchmark.md](docs/benchmark.md).
+per-structure analysis is **~8-18× faster** than the C++ binary.
+
+![runtime vs sequence length](docs/timing_vs_length.png)
+
+Runtime scales sub-quadratically with sequence length (the CA-distance cutoff
+bounds each residue's neighbor count). See [docs/benchmark.md](docs/benchmark.md)
+for details.
 
 ## Install
 

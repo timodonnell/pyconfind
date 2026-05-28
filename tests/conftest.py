@@ -6,20 +6,23 @@ from pathlib import Path
 
 import pytest
 
-ROTLIB_DIR = Path(__file__).resolve().parents[1] / "original-source" / "confind-msl" / "rotlibs"
-EXAMPLES_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "original-source"
-    / "confind-msl"
-    / "mslib"
-    / "exampleFiles"
+_REPO = Path(__file__).resolve().parents[1]
+# The full production rotamer library (100+ MB) is not committed; it lives
+# under the local original-source/ tree extracted from the upstream tarball.
+ROTLIB_DIR = _REPO / "original-source" / "confind-msl" / "rotlibs"
+# Example PDBs are bundled under tests/data/examples so they are available in
+# CI; fall back to the original-source copy if the bundled set is absent.
+_BUNDLED_EXAMPLES = Path(__file__).resolve().parent / "data" / "examples"
+_SRC_EXAMPLES = (
+    _REPO / "original-source" / "confind-msl" / "mslib" / "exampleFiles"
 )
+EXAMPLES_DIR = _BUNDLED_EXAMPLES if _BUNDLED_EXAMPLES.exists() else _SRC_EXAMPLES
 
 
 @pytest.fixture(scope="session")
 def rotlib_dir() -> Path:
     if not ROTLIB_DIR.exists():
-        pytest.skip(f"Rotamer library not found at {ROTLIB_DIR}")
+        pytest.skip(f"Full rotamer library not found at {ROTLIB_DIR}")
     return ROTLIB_DIR
 
 

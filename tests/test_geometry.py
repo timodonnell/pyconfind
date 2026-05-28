@@ -66,7 +66,7 @@ def test_ic_builder_matches_cpp_for_ala_position_1(examples_dir: Path, ebl_path:
     avoid the pruning step here, we restrict comparison to AA identities and
     rotamer indices present in the golden file.
     """
-    repo_root = examples_dir.parents[2].parent
+    repo_root = Path(__file__).resolve().parents[1]
     rout = repo_root / "tests" / "golden" / "example0000.rotamers.pdb"
     golden = _parse_golden_rotamers(rout)
 
@@ -127,7 +127,7 @@ def test_ic_builder_full_sweep_example0000(examples_dir: Path) -> None:
     the bb-dep fallback bin (since all positions are termini for phi or psi)
     and verify every sidechain heavy atom against the C++ --rout golden file.
     """
-    repo_root = examples_dir.parents[2].parent
+    repo_root = Path(__file__).resolve().parents[1]
     rotlib_dir = repo_root / "original-source" / "confind-msl" / "rotlibs"
     rout = repo_root / "tests" / "golden" / "example0000.rotamers.pdb"
     if not rotlib_dir.exists() or not rout.exists():
@@ -193,7 +193,7 @@ def test_ic_builder_arg_against_cpp_terminus(examples_dir: Path) -> None:
     C++ writes rotamers in the order they survived pruning; we verify all
     seven heavy sidechain atoms of every surviving ARG rotamer match.
     """
-    repo_root = examples_dir.parents[2].parent
+    repo_root = Path(__file__).resolve().parents[1]
     rotlib_dir = repo_root / "original-source" / "confind-msl" / "rotlibs"
     rout = repo_root / "tests" / "golden" / "example0000.rotamers.pdb"
     if not rotlib_dir.exists() or not rout.exists():

@@ -1,0 +1,11 @@
+contact	A,1	A,3	0.002446	ALA	ALA
+sumcond	A,1	0.002446	ALA
+sumcond	A,2	0.000000	ILE
+sumcond	A,3	0.002446	ALA
+crwdnes	A,1	0.000000	ALA
+crwdnes	A,2	0.000000	ILE
+crwdnes	A,3	0.058140	ALA
+freedom	A,1	1.000000	ALA
+freedom	A,2	1.000000	ILE
+freedom	A,3	0.941860	ALA
+SEQUENCE: ALA ILE ALA

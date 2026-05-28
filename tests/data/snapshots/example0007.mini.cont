@@ -1,0 +1,18 @@
+contact	A,1	A,2	0.000011	PRO	GLU
+contact	A,1	A,3	0.358027	PRO	ILE
+contact	A,1	A,4	0.821967	PRO	THR
+contact	A,2	A,3	0.009243	GLU	ILE
+contact	A,3	A,4	0.010606	ILE	THR
+sumcond	A,1	1.180005	PRO
+sumcond	A,2	0.009254	GLU
+sumcond	A,3	0.377877	ILE
+sumcond	A,4	0.832573	THR
+crwdnes	A,1	0.267442	PRO
+crwdnes	A,2	0.000000	GLU
+crwdnes	A,3	0.000000	ILE
+crwdnes	A,4	0.360465	THR
+freedom	A,1	0.519040	PRO
+freedom	A,2	1.000000	GLU
+freedom	A,3	0.932845	ILE
+freedom	A,4	0.466640	THR
+SEQUENCE: PRO GLU ILE THR
