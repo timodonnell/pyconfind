@@ -1,6 +1,7 @@
 # pyconfind
 
 [![CI](https://github.com/timodonnell/pyconfind/actions/workflows/ci.yml/badge.svg)](https://github.com/timodonnell/pyconfind/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pyconfind.svg)](https://pypi.org/project/pyconfind/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
 
@@ -35,10 +36,14 @@ for details.
 ## Install
 
 ```bash
-pip install -e ".[dev]"      # includes the Numba fast backend
-# or, runtime only:
-pip install -e .             # pure-Python reference backend
-pip install -e ".[fast]"     # + Numba backend
+pip install pyconfind            # pure-Python reference backend
+pip install "pyconfind[fast]"    # + Numba JIT/multi-threaded backend
+```
+
+From source (for development):
+
+```bash
+pip install -e ".[dev]"          # editable install with test/lint tooling
 ```
 
 ## Example notebook
