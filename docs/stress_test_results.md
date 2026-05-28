@@ -12,9 +12,14 @@ Tested pyconfind against the reference C++ binary on 200 real structures —
 | **AFDB**     |        100 |            100 | 1.27× |
 | **Combined** |        200 |        **200** | 1.22× |
 
-Total runtime: 6221 s (C++) vs. 5104 s (pyconfind). Every output row —
-contact, sumcond, percont, crwdnes, freedom, SEQUENCE — is byte-for-byte
-identical to the reference binary across all 200 structures.
+Every output row — contact, sumcond, percont, crwdnes, freedom, SEQUENCE —
+is byte-for-byte identical to the reference binary across all 200 structures.
+
+> **Note on timings:** the speedup figures in the table above were measured
+> *before* the contact-loop vectorization (commit "Vectorize contact
+> detection"). Current performance is substantially better — see
+> [benchmark.md](benchmark.md) for up-to-date numbers (3-8× per structure
+> with the library amortized). The byte-identity result is unaffected.
 
 ## A formerly-tricky case (now fixed)
 

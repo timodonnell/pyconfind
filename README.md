@@ -9,8 +9,10 @@ on **all 200** real structures tested (100 from the PDB + 100 from the
 AlphaFold DB; see [docs/stress_test_results.md](docs/stress_test_results.md))
 and on all 11 example structures shipped with the original codebase.
 
-pyconfind is also slightly faster than the C++ binary: 1.22× speedup
-overall on the real-structure stress test (1.17× PDB, 1.27× AFDB).
+pyconfind is also faster than the C++ binary. With the rotamer library
+amortized across a batch, the per-structure analysis is **3-8× faster**;
+even cold (counting the one-time library load), it's **~2-2.6× faster**
+end-to-end. See [docs/benchmark.md](docs/benchmark.md).
 
 ## Install
 
