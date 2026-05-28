@@ -9,15 +9,24 @@ on **all 200** real structures tested (100 from the PDB + 100 from the
 AlphaFold DB; see [docs/stress_test_results.md](docs/stress_test_results.md))
 and on all 11 example structures shipped with the original codebase.
 
-pyconfind is also faster than the C++ binary. With the rotamer library
-amortized across a batch, the per-structure analysis is **3-8× faster**;
-even cold (counting the one-time library load), it's **~2-2.6× faster**
-end-to-end. See [docs/benchmark.md](docs/benchmark.md).
+pyconfind is also faster than the C++ binary, with two interchangeable
+contact-degree backends (both byte-identical to the reference):
+
+* a pure NumPy/SciPy reference, which on its own already beats the C++ binary;
+* an optional **Numba** JIT/multi-threaded backend (`pip install pyconfind[fast]`)
+  that is ~2-3× faster again.
+
+With the Numba backend and the rotamer library amortized across a batch, the
+per-structure analysis is **~8-18× faster** than the C++ binary. See
+[docs/benchmark.md](docs/benchmark.md).
 
 ## Install
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"      # includes the Numba fast backend
+# or, runtime only:
+pip install -e .             # pure-Python reference backend
+pip install -e ".[fast]"     # + Numba backend
 ```
 
 ## Quick start

@@ -45,14 +45,24 @@ def _flatten(positions: list[PositionRotamers]) -> tuple:
     bbox_hi = np.full((P, 3), -np.inf, dtype=np.float64)
     nrot = np.zeros(P, dtype=np.int64)
 
+    # All rotamers of the same AA at a position share the same sidechain_atoms
+    # tuple object, so cache the heavy-atom mask by identity.
+    heavy_cache: dict[int, np.ndarray] = {}
+
+    def heavy_mask(names: tuple[str, ...]) -> np.ndarray:
+        key = id(names)
+        m = heavy_cache.get(key)
+        if m is None:
+            m = np.array([not n.startswith("H") for n in names], dtype=bool)
+            heavy_cache[key] = m
+        return m
+
     for i, pr in enumerate(positions):
         ca[i] = pr.position.backbone.get("CA", np.full(3, np.nan))
         nrot[i] = len(pr.rotamers)
         a_count = 0
         for r, rot in enumerate(pr.rotamers):
-            heavy = np.array(
-                [not n.startswith("H") for n in rot.sidechain_atoms], dtype=bool
-            )
+            heavy = heavy_mask(rot.sidechain_atoms)
             x = rot.sidechain_xyz[heavy]
             if x.shape[0]:
                 xyz_chunks.append(x)
