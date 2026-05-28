@@ -166,30 +166,7 @@ def read_pdb(
         chain_arr, resnum_arr, icode_arr, resname_arr
     )
 
-    if renumber and n:
-        # Renumber each chain's positions starting from 1 (preserving relative
-        # order). Atoms inherit the new resnum from their position.
-        new_resnum = np.empty(n, dtype=np.int32)
-        # Map position_index -> new resnum
-        pos_to_chain: dict[int, str] = {}
-        pos_first_atom: dict[int, int] = {}
-        for i, pi in enumerate(position_index):
-            pi_int = int(pi)
-            if pi_int not in pos_first_atom:
-                pos_first_atom[pi_int] = i
-                pos_to_chain[pi_int] = str(chain_arr[i])
-        per_chain_counter: dict[str, int] = {}
-        pos_new_resnum: dict[int, int] = {}
-        for pi_int in sorted(pos_first_atom):
-            ch = pos_to_chain[pi_int]
-            per_chain_counter[ch] = per_chain_counter.get(ch, 0) + 1
-            pos_new_resnum[pi_int] = per_chain_counter[ch]
-        for i in range(n):
-            new_resnum[i] = pos_new_resnum[int(position_index[i])]
-        resnum_arr = new_resnum
-        icode_arr = np.zeros(n, dtype="<U1")
-
-    return Atoms(
+    atoms = Atoms(
         chain=chain_arr,
         resnum=resnum_arr,
         icode=icode_arr,
@@ -201,6 +178,101 @@ def read_pdb(
         occupancy=occ_arr,
         position_index=position_index,
         identity_index=identity_index,
+    )
+
+    # Reorder positions to match MSL's Chain ordering (see _reorder_msl), then
+    # renumber if requested — the C++ orders positions before renumbering.
+    atoms = _reorder_msl(atoms)
+    if renumber:
+        atoms = _renumber_chains(atoms)
+    return atoms
+
+
+def _renumber_chains(atoms: Atoms) -> Atoms:
+    """Renumber each chain's positions from 1 (the ``--ren`` flag).
+
+    Operates on positions in their current order; atoms inherit their
+    position's new number and lose insertion codes.
+    """
+    n = len(atoms)
+    if n == 0:
+        return atoms
+    slices = position_iter(atoms)
+    new_resnum = np.empty(n, dtype=np.int32)
+    per_chain: dict[str, int] = {}
+    for s in slices:
+        ch = str(atoms.chain[s.start])
+        per_chain[ch] = per_chain.get(ch, 0) + 1
+        new_resnum[s] = per_chain[ch]
+    pos_idx, id_idx = _build_position_indices(
+        atoms.chain, new_resnum, np.zeros(n, dtype="<U1"), atoms.resname
+    )
+    return Atoms(
+        chain=atoms.chain,
+        resnum=new_resnum,
+        icode=np.zeros(n, dtype="<U1"),
+        resname=atoms.resname,
+        name=atoms.name,
+        altloc=atoms.altloc,
+        element=atoms.element,
+        xyz=atoms.xyz,
+        occupancy=atoms.occupancy,
+        position_index=pos_idx,
+        identity_index=id_idx,
+    )
+
+
+def _reorder_msl(atoms: Atoms) -> Atoms:
+    """Reorder atoms so positions follow MSL's Chain ordering.
+
+    MSL inserts positions with a comparator (``sortByResnumIcodeAscending``)
+    that — due to a bug comparing an insertion code against itself — reduces
+    to: order by residue number ascending, and within a residue number place
+    the blank-insertion-code residue first, with lettered insertion codes
+    keeping their file order. Chains stay in first-appearance order. For the
+    common case (ascending residue numbers, no insertion codes) this is a
+    no-op; it only matters for protease/antibody numbering where the file
+    lists insertion-coded residues out of ascending order.
+    """
+    n = len(atoms)
+    if n == 0:
+        return atoms
+    slices = position_iter(atoms)
+    # Chain first-appearance order.
+    chain_rank: dict[str, int] = {}
+    for s in slices:
+        ch = str(atoms.chain[s.start])
+        if ch not in chain_rank:
+            chain_rank[ch] = len(chain_rank)
+    # Stable sort key per position; the slice index (file order) breaks ties.
+    order = sorted(
+        range(len(slices)),
+        key=lambda p: (
+            chain_rank[str(atoms.chain[slices[p].start])],
+            int(atoms.resnum[slices[p].start]),
+            0 if str(atoms.icode[slices[p].start]) == "" else 1,
+            p,
+        ),
+    )
+    if order == list(range(len(slices))):
+        return atoms  # already in MSL order — avoid copying
+    new_index = np.concatenate([np.arange(slices[p].start, slices[p].stop) for p in order])
+    pos_idx, id_idx = _build_position_indices(
+        atoms.chain[new_index], atoms.resnum[new_index],
+        atoms.icode[new_index], atoms.resname[new_index],
+    )
+    return Atoms(
+        chain=atoms.chain[new_index],
+        resnum=atoms.resnum[new_index],
+        icode=atoms.icode[new_index],
+        resname=atoms.resname[new_index],
+        name=atoms.name[new_index],
+        altloc=atoms.altloc[new_index],
+        element=atoms.element[new_index],
+        xyz=atoms.xyz[new_index],
+        occupancy=atoms.occupancy[new_index],
+        position_index=pos_idx,
+        identity_index=id_idx,
     )
 
 

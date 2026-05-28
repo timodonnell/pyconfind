@@ -121,3 +121,38 @@ def test_empty_pdb(tmp_path: Path) -> None:
     assert len(atoms) == 0
     assert atoms.num_positions == 0
     assert position_iter(atoms) == []
+
+
+def test_msl_reorder_blank_icode_first(tmp_path: Path) -> None:
+    """MSL pulls a blank-insertion-code residue ahead of same-number lettered
+    residues that precede it in the file (protease N-terminal numbering)."""
+    pdb = (
+        "ATOM      1  CA  THR L   1H      0.000   0.000   0.000  1.00  0.00           C\n"
+        "ATOM      2  CA  ALA L   1A      1.000   0.000   0.000  1.00  0.00           C\n"
+        "ATOM      3  CA  CYS L   1       2.000   0.000   0.000  1.00  0.00           C\n"
+        "ATOM      4  CA  GLY L   2       3.000   0.000   0.000  1.00  0.00           C\n"
+    )
+    p = tmp_path / "t.pdb"
+    p.write_text(pdb)
+    atoms = read_pdb(p)
+    # Positions in order: blank-icode "1" first, then lettered in file order, then 2.
+    order = [
+        (str(atoms.resname[s.start]), int(atoms.resnum[s.start]), str(atoms.icode[s.start]))
+        for s in position_iter(atoms)
+    ]
+    assert order == [
+        ("CYS", 1, ""), ("THR", 1, "H"), ("ALA", 1, "A"), ("GLY", 2, ""),
+    ]
+
+
+def test_ascending_order_is_noop(tmp_path: Path) -> None:
+    """Structures already in ascending residue order are unchanged by reorder."""
+    pdb = (
+        "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\n"
+        "ATOM      2  CA  GLY A   2       1.000   0.000   0.000  1.00  0.00           C\n"
+        "ATOM      3  CA  SER A   3       2.000   0.000   0.000  1.00  0.00           C\n"
+    )
+    p = tmp_path / "t.pdb"
+    p.write_text(pdb)
+    atoms = read_pdb(p)
+    assert list(atoms.resnum) == [1, 2, 3]
