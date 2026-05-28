@@ -26,25 +26,33 @@ def _http_get(url: str, timeout: float = 30.0) -> bytes:
         return resp.read()
 
 
-def fetch_pdb_ids(n: int, offset: int = 0) -> list[str]:
-    """Use the RCSB search API to fetch single-chain protein X-ray entries
-    with 50-200 residues."""
+def fetch_pdb_ids(
+    n: int,
+    offset: int = 0,
+    *,
+    min_res: int = 50,
+    max_res: int = 200,
+    min_chains: int = 1,
+    max_chains: int = 1,
+) -> list[str]:
+    """Fetch protein X-ray entry IDs from the RCSB search API.
+
+    Defaults to single-chain 50-200-residue entries; widen ``min/max_chains``
+    and ``min/max_res`` to target multi-chain complexes or larger structures.
+    """
+    nodes = [
+        {"type": "terminal", "service": "text",
+         "parameters": {"attribute": "rcsb_entry_info.polymer_entity_count_protein",
+                        "operator": "range", "value": {"from": min_chains, "to": max_chains}}},
+        {"type": "terminal", "service": "text",
+         "parameters": {"attribute": "rcsb_entry_info.deposited_polymer_monomer_count",
+                        "operator": "range", "value": {"from": min_res, "to": max_res}}},
+        {"type": "terminal", "service": "text",
+         "parameters": {"attribute": "exptl.method",
+                        "operator": "exact_match", "value": "X-RAY DIFFRACTION"}},
+    ]
     body = {
-        "query": {
-            "type": "group", "logical_operator": "and", "nodes": [
-                {"type": "terminal", "service": "text",
-                 "parameters": {"attribute": "rcsb_entry_info.polymer_entity_count_protein",
-                                "operator": "equals", "value": 1}},
-                {"type": "terminal", "service": "text",
-                 "parameters": {"attribute": "rcsb_entry_info.deposited_polymer_monomer_count",
-                                "operator": "range",
-                                "value": {"from": 50, "to": 200}}},
-                {"type": "terminal", "service": "text",
-                 "parameters": {"attribute": "exptl.method",
-                                "operator": "exact_match",
-                                "value": "X-RAY DIFFRACTION"}},
-            ]
-        },
+        "query": {"type": "group", "logical_operator": "and", "nodes": nodes},
         "return_type": "entry",
         "request_options": {
             "paginate": {"start": offset, "rows": n},
@@ -205,6 +213,10 @@ def main() -> int:
                         help="Per-PDB timeout for the C++ run.")
     parser.add_argument("--pdb-offset", type=int, default=0,
                         help="Skip the first N PDB hits (to get a different sample).")
+    parser.add_argument("--pdb-min-res", type=int, default=50)
+    parser.add_argument("--pdb-max-res", type=int, default=200)
+    parser.add_argument("--pdb-min-chains", type=int, default=1)
+    parser.add_argument("--pdb-max-chains", type=int, default=1)
     parser.add_argument("--summary-json", type=Path, default=None,
                         help="If set, write a machine-readable summary here.")
     args = parser.parse_args()
@@ -222,7 +234,11 @@ def main() -> int:
         d.mkdir(parents=True, exist_ok=True)
 
     print(f"Fetching {args.pdb_count} PDB IDs...", flush=True)
-    pdb_ids = fetch_pdb_ids(args.pdb_count + 25, offset=args.pdb_offset)  # over-fetch for failures
+    pdb_ids = fetch_pdb_ids(
+        args.pdb_count + 25, offset=args.pdb_offset,  # over-fetch for failures
+        min_res=args.pdb_min_res, max_res=args.pdb_max_res,
+        min_chains=args.pdb_min_chains, max_chains=args.pdb_max_chains,
+    )
     print(f"  got {len(pdb_ids)} ids", flush=True)
 
     print("Downloading PDB files...", flush=True)
