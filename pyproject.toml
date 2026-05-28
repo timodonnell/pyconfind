@@ -46,3 +46,11 @@ addopts = "-ra"
 [tool.mypy]
 python_version = "3.10"
 strict = true
+# NumPy/SciPy pragmatism: bare ``np.ndarray`` (without dtype/shape generics) is
+# idiomatic in numeric code, and SciPy ships no type stubs. Relax just these two
+# so the rest of strict mode (untyped defs, return types, optionals) still bites.
+disallow_any_generics = false
+
+[[tool.mypy.overrides]]
+module = ["scipy.*"]
+ignore_missing_imports = true

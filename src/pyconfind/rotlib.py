@@ -36,7 +36,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 _WILDCARD_BIN: int = -10_000  # sentinel used internally for ``BIN * *``
 
 

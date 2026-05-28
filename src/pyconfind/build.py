@@ -13,7 +13,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 from .rotamers import place_rotamers
-from .rotlib import RotamerLibrary
+from .rotlib import ResidueICTemplate, RotamerLibrary
 from .structure import Position
 
 # AAs to consider at each position. Order matches confind.cpp:457.
@@ -252,7 +252,9 @@ def _process_position(
     return surviving, perm, frac, total_placed
 
 
-def _has_required_parents(tmpl, backbone: dict[str, np.ndarray]) -> bool:
+def _has_required_parents(
+    tmpl: ResidueICTemplate, backbone: dict[str, np.ndarray]
+) -> bool:
     """Every IC parent atom name in ``tmpl`` must either be a placed atom or
     be present in ``backbone``."""
     placed = set(tmpl.placed)

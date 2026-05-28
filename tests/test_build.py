@@ -210,7 +210,6 @@ def test_permanent_contacts_example_with_perm(examples_dir: Path, rotlib_dir: Pa
         positions = positions_from_atoms(atoms)
         lib = load_library(rotlib_dir)
         result = build_position_rotamers(positions, lib)
-        pos_by_key = {(p.position.chain, p.position.resnum): p for p in result}
         # Parse C++ percont rows: "percont\tchain,resnum\tchain,resnum\t-1.0\t..."
         golden_perm: set[tuple[tuple[str, int], tuple[str, int]]] = set()
         for line in text.splitlines():

@@ -42,15 +42,12 @@ def place_one(
     m = np.cross(n, bc)
     theta = np.deg2rad(angle_deg)
     phi = np.deg2rad(dihedral_deg)
-    return (
-        c
-        + bond
-        * (
-            -np.cos(theta) * bc
-            + np.sin(theta) * np.cos(phi) * m
-            + np.sin(theta) * np.sin(phi) * n
-        )
+    result = c + bond * (
+        -np.cos(theta) * bc
+        + np.sin(theta) * np.cos(phi) * m
+        + np.sin(theta) * np.sin(phi) * n
     )
+    return np.asarray(result, dtype=np.float64)
 
 
 def place_batch(
@@ -80,4 +77,5 @@ def place_batch(
     sin_t = np.sin(theta)[:, None]
     cos_p = np.cos(phi)[:, None]
     sin_p = np.sin(phi)[:, None]
-    return c + bond[:, None] * (-cos_t * bc + sin_t * cos_p * m + sin_t * sin_p * n)
+    result = c + bond[:, None] * (-cos_t * bc + sin_t * cos_p * m + sin_t * sin_p * n)
+    return np.asarray(result, dtype=np.float64)

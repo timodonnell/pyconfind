@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 
-from pyconfind.pdb import LEGAL_RESIDUE_NAMES, Atoms, position_iter, read_pdb
+from pyconfind.pdb import LEGAL_RESIDUE_NAMES, position_iter, read_pdb
 
 
 def test_read_example0000(examples_dir: Path) -> None:

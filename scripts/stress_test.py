@@ -13,11 +13,11 @@ import json
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
 
 
 def _http_get(url: str, timeout: float = 30.0) -> bytes:
@@ -211,7 +211,7 @@ def main() -> int:
 
     from pyconfind.rotlib import load_library
     library = load_library(args.rLib)
-    print(f"Library loaded.", flush=True)
+    print("Library loaded.", flush=True)
 
     pdb_dir = args.data_dir / "pdb"
     afdb_dir = args.data_dir / "afdb"
@@ -225,7 +225,7 @@ def main() -> int:
     pdb_ids = fetch_pdb_ids(args.pdb_count + 25, offset=args.pdb_offset)  # over-fetch for failures
     print(f"  got {len(pdb_ids)} ids", flush=True)
 
-    print(f"Downloading PDB files...", flush=True)
+    print("Downloading PDB files...", flush=True)
     pdb_paths: list[Path] = []
     with ThreadPoolExecutor(max_workers=8) as ex:
         for p in ex.map(lambda i: fetch_pdb(i, pdb_dir), pdb_ids):
@@ -236,11 +236,11 @@ def main() -> int:
 
     print(f"  {len(pdb_paths)} PDB files ready", flush=True)
 
-    print(f"Fetching UniProt IDs...", flush=True)
+    print("Fetching UniProt IDs...", flush=True)
     uniprot_ids = fetch_uniprot_ids(args.afdb_count + 25)
     print(f"  got {len(uniprot_ids)} ids", flush=True)
 
-    print(f"Downloading AFDB files...", flush=True)
+    print("Downloading AFDB files...", flush=True)
     afdb_paths: list[Path] = []
     with ThreadPoolExecutor(max_workers=8) as ex:
         for p in ex.map(lambda u: fetch_afdb(u, afdb_dir), uniprot_ids):

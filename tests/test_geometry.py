@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from pyconfind.geometry import place_batch, place_one
 from pyconfind.rotamers import place_rotamers

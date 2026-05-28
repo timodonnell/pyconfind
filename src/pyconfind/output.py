@@ -40,6 +40,11 @@ class OutputOptions:
     pdb_filename: str | None = None  # echoed back when --pf is set
 
 
+# Immutable module-level singleton used as the default for formatter args
+# (a frozen dataclass with all-default fields is safe to share).
+_DEFAULT_OPTIONS = OutputOptions()
+
+
 def _position_id(pr: PositionRotamers) -> str:
     pos = pr.position
     return f"{pos.chain},{pos.resnum}{pos.icode}"
@@ -69,7 +74,7 @@ def _format_pp(value: float | None) -> str:
 def format_confind_text(
     positions: list[PositionRotamers],
     report: ContactReport,
-    options: OutputOptions = OutputOptions(),
+    options: OutputOptions = _DEFAULT_OPTIONS,
 ) -> str:
     """Render the confind output as the original text format.
 
@@ -101,7 +106,7 @@ def format_confind_text(
 
     # 3) percont rows. The C++ writes one row per unordered (i, j) permanent
     # contact in the same direction it was discovered (i -> contacts of i).
-    for i, pr in enumerate(positions):
+    for pr in positions:
         for j in sorted(pr.permanent_contacts):
             other = positions[j]
             lines.append(
@@ -150,7 +155,7 @@ def _per_position_row(
 def format_json(
     positions: list[PositionRotamers],
     report: ContactReport,
-    options: OutputOptions = OutputOptions(),
+    options: OutputOptions = _DEFAULT_OPTIONS,
     *,
     indent: int | None = 2,
 ) -> str:
