@@ -213,8 +213,11 @@ def _pair_contact_degree(
     sum_wi = float(weights_i.sum())
     sum_wj = float(weights_j.sum())
     n = sum_wi * sum_wj
-    if n == 0.0:
-        return 0.0
+    # NOTE: we do *not* early-return when n == 0. MSL's contactProbability
+    # accumulates collision-probability mass into cp[i][ri] += p2 even when
+    # the i-side weight is zero, which can happen for rotamers whose library
+    # weight is 0.0 (the EBL table contains a few such entries). Matching
+    # that requires running the contact loop and updating cp regardless.
     # Bounding-box prefilter: rotamers of i and j that can possibly interact.
     # If position i's overall bbox is far from position j's overall bbox, no
     # contact possible (cheap reject).
@@ -247,4 +250,8 @@ def _pair_contact_degree(
         c += pij
         coll_probs_i[ri] += float(weights_j[rj])
         coll_probs_j[rj] += float(weights_i[ri])
+    if n == 0.0:
+        # All weights on one side are zero; contact degree is 0/0 = undefined.
+        # MSL returns NaN here, which downstream filters drop via ``d > 0``.
+        return float("nan")
     return c / n
