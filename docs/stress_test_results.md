@@ -6,31 +6,27 @@ Tested pyconfind against the reference C++ binary on 200 real structures —
 
 ## Results
 
-|              | Structures | Byte-identical | Diff lines / output | Speedup |
-|--------------|-----------:|---------------:|--------------------:|--------:|
-| **PDB**      |        100 |            100 |              0 / 224k+ | 1.18× |
-| **AFDB**     |        100 |             99 |              1 / 213k+ | 1.28× |
-| **Combined** |        200 |            199 |              1 / 437k+ | 1.23× |
+|              | Structures | Byte-identical | Speedup |
+|--------------|-----------:|---------------:|--------:|
+| **PDB**      |        100 |            100 | 1.17× |
+| **AFDB**     |        100 |            100 | 1.27× |
+| **Combined** |        200 |        **200** | 1.22× |
 
-Total runtime: 6222 s (C++) vs. 5069 s (pyconfind).
+Total runtime: 6221 s (C++) vs. 5104 s (pyconfind). Every output row —
+contact, sumcond, percont, crwdnes, freedom, SEQUENCE — is byte-for-byte
+identical to the reference binary across all 200 structures.
 
-## The single mismatch
+## A formerly-tricky case (now fixed)
 
-`AF-O15116-F1` position `A,68` (a GLY residue). The diff is a single
-`freedom` value:
-
-```
-cpp: freedom    A,68    0.001334    GLY
-py : freedom    A,68    0.001887    GLY
-```
-
-Ratio: √2. The `freedom` metric counts rotamers below two collision-
-probability thresholds (0.5 and 2.0 — see confind.cpp:797-826) and rolls
-them into `sqrt((n1² + n2²) / 2) / orig_num_rotamers`. One rotamer's
-collision-probability mass lands on opposite sides of the `cp/100 < 0.5`
-threshold between the two implementations — a discrete-threshold
-floating-point boundary effect on a single rotamer out of thousands, not
-a fundamental disagreement (the underlying contact-pair set is unchanged).
+An earlier run had a single `freedom` mismatch at `AF-O15116-F1` position
+`A,68` (a GLY residue): 0.001887 vs. the C++'s 0.001334. The cause was a
+zero-weight rotamer. MSL's `contactProbability` accumulates
+collision-probability mass into `cp[i] += p2` even when the i-side rotamer
+weight is zero (and a few EBL rotamer entries have weight exactly 0.0). Our
+contact loop was early-returning when `sum(weights_i) * sum(weights_j) == 0`,
+skipping that accumulation, so the lone surviving zero-weight rotamer failed
+to register in the freedom counter. Removing the early return (while still
+returning NaN for the 0/0 contact degree) brought it into agreement.
 
 ## Reproduce
 
