@@ -30,6 +30,17 @@ to ~700 residues / 8 chains) are byte-for-byte identical.
 atoms, and in 1US0's case an incomplete residue): **3 / 3 byte-identical**,
 including the partial-residue case the C++ warns about.
 
+### mmCIF vs PDB (100 structures)
+
+Structure parsing goes through gemmi, which reads both PDB and mmCIF. Running
+the same 100 RCSB entries from both formats: **0 parse errors; 99 / 100 give
+byte-identical output** between `.cif` and `.pdb`. The lone difference (10DC)
+is not a parsing defect — RCSB's mmCIF stores 5-decimal coordinates while the
+PDB rounds to 3, a genuine ~5e-4 Å input difference that perturbs contact
+degrees by at most 5.7e-3 (mean 3.4e-4); the residue set, contact set, and row
+ordering are identical. Since the PDB path is byte-identical to the C++
+reference, the matching `.cif` outputs are validated transitively.
+
 Across all batches, every output row — contact, sumcond, percont, crwdnes,
 freedom, SEQUENCE — is byte-for-byte identical except for the insertion-code
 structures noted below.
