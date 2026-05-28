@@ -21,8 +21,9 @@ from pathlib import Path
 
 from .build import PositionRotamers, build_position_rotamers
 from .contacts import ContactReport, compute_contacts
-from .pdb import read_pdb
+from .pdb import filter_atoms_by_position, read_pdb
 from .rotlib import RotamerLibrary, load_library
+from .selection import select_residue_mask
 from .structure import positions_from_atoms
 
 
@@ -54,8 +55,8 @@ def analyze(
     pdb_path: str | Path,
     rotamer_library: str | Path | RotamerLibrary,
     *,
-    pre_select: str | None = None,  # not yet implemented
-    focus: str | None = None,        # not yet implemented
+    pre_select: str | None = None,
+    focus: str | None = None,
     contact_distance: float = 3.0,
     clash_distance: float = 2.0,
     dcut: float = 25.0,
@@ -73,9 +74,15 @@ def analyze(
         Either a path to a rotamer library directory (e.g. ``./rotlibs``
         containing ``EBL.out`` + ``BEBL.out``) or a single ``EBL.out`` file
         for bb-indep operation, or a pre-loaded :class:`RotamerLibrary`.
-    pre_select, focus
-        Reserved for the ``--psel`` / ``--sel`` C++ flags. Not implemented
-        yet — passing a non-None value will raise :class:`NotImplementedError`.
+    pre_select
+        MSL selection string (the ``--psel`` flag). Only residues whose CA
+        atom satisfies this selection are kept in the structure before
+        anything else runs.
+    focus
+        MSL selection string (the ``--sel`` flag). Rotamers are only placed
+        and contacts only computed for residues whose CA atom satisfies this
+        selection; the rest of the structure is still present for backbone
+        collision detection but is excluded from the output.
     contact_distance
         Sidechain-sidechain contact cutoff in Å. C++ default 3.0.
     clash_distance
@@ -93,23 +100,33 @@ def analyze(
         New mode: only substitute the *native* AA at each position instead
         of all 18. Still uses all rotamers of that AA.
     """
-    if pre_select is not None or focus is not None:
-        raise NotImplementedError(
-            "--psel / --sel selection is not yet implemented in pyconfind."
-        )
     pdb_path = Path(pdb_path)
     if isinstance(rotamer_library, RotamerLibrary):
         library = rotamer_library
     else:
         library = load_library(rotamer_library)
     atoms = read_pdb(pdb_path, renumber=renumber)
+
+    # --psel: keep only residues whose CA satisfies the pre-selection. The
+    # C++ applies this on the raw structure before protein-only filtering;
+    # we apply it after read_pdb (which already drops non-protein atoms).
+    if pre_select is not None:
+        pos_mask = select_residue_mask(atoms, pre_select)
+        atoms = filter_atoms_by_position(atoms, pos_mask)
+
     positions = positions_from_atoms(atoms)
+
+    focus_mask = None
+    if focus is not None:
+        focus_mask = select_residue_mask(atoms, focus)
+
     rot_results = build_position_rotamers(
         positions,
         library,
         clash_dist=clash_distance,
         do_not_count_cb=do_not_count_cb,
         native_only=native_only,
+        focus_mask=focus_mask,
     )
     report = compute_contacts(
         rot_results,

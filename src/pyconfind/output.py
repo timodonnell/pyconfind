@@ -100,13 +100,19 @@ def format_confind_text(
             )
         )
 
+    # When --sel is in effect, only in-focus positions are emitted.
+    focus_idx = [i for i, pr in enumerate(positions) if pr.in_focus]
+
     # 2) sumcond rows.
-    for i, pr in enumerate(positions):
-        lines.append(_per_position_row("sumcond", pr, report.sum_contact_degree[i], options))
+    for i in focus_idx:
+        lines.append(
+            _per_position_row("sumcond", positions[i], report.sum_contact_degree[i], options)
+        )
 
     # 3) percont rows. The C++ writes one row per unordered (i, j) permanent
     # contact in the same direction it was discovered (i -> contacts of i).
-    for pr in positions:
+    for i in focus_idx:
+        pr = positions[i]
         for j in sorted(pr.permanent_contacts):
             other = positions[j]
             lines.append(
@@ -123,15 +129,15 @@ def format_confind_text(
             )
 
     # 4) crwdnes rows.
-    for i, pr in enumerate(positions):
-        lines.append(_per_position_row("crwdnes", pr, report.crwdnes[i], options))
+    for i in focus_idx:
+        lines.append(_per_position_row("crwdnes", positions[i], report.crwdnes[i], options))
 
     # 5) freedom rows.
-    for i, pr in enumerate(positions):
-        lines.append(_per_position_row("freedom", pr, report.freedom[i], options))
+    for i in focus_idx:
+        lines.append(_per_position_row("freedom", positions[i], report.freedom[i], options))
 
     # 6) SEQUENCE: trailing row.
-    seq = " ".join(pr.position.resname for pr in positions)
+    seq = " ".join(positions[i].position.resname for i in focus_idx)
     lines.append("SEQUENCE: " + seq)
     return "\n".join(lines) + "\n"
 

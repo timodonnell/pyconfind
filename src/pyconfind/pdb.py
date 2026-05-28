@@ -244,6 +244,31 @@ def _build_position_indices(
     return pos_idx, id_idx
 
 
+def filter_atoms_by_position(atoms: Atoms, position_mask: np.ndarray) -> Atoms:
+    """Return a new :class:`Atoms` keeping only atoms in selected positions.
+
+    ``position_mask`` is a boolean array of length ``num_positions``. Position
+    and identity indices are recomputed so they stay contiguous from 0.
+    """
+    keep = position_mask[atoms.position_index]
+    pos_idx, id_idx = _build_position_indices(
+        atoms.chain[keep], atoms.resnum[keep], atoms.icode[keep], atoms.resname[keep]
+    )
+    return Atoms(
+        chain=atoms.chain[keep],
+        resnum=atoms.resnum[keep],
+        icode=atoms.icode[keep],
+        resname=atoms.resname[keep],
+        name=atoms.name[keep],
+        altloc=atoms.altloc[keep],
+        element=atoms.element[keep],
+        xyz=atoms.xyz[keep],
+        occupancy=atoms.occupancy[keep],
+        position_index=pos_idx,
+        identity_index=id_idx,
+    )
+
+
 def position_iter(atoms: Atoms) -> list[slice]:
     """Return one ``slice`` per position covering its atoms.
 

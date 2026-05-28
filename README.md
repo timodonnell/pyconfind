@@ -30,6 +30,10 @@ pyconfind --p input.pdb --rLib path/to/rotlibs --o out.cont
 pyconfind --p input.pdb --rLib path/to/rotlibs --json --o out.json
 # Only consider the native AA at each position (no AA substitution):
 pyconfind --p input.pdb --rLib path/to/rotlibs --native-only --o out.cont
+# Restrict the computed/output residues (MSL selection language):
+pyconfind --p input.pdb --rLib path/to/rotlibs --sel "chain A AND resi 20-60" --o out.cont
+# Pre-select part of the structure before anything runs:
+pyconfind --p input.pdb --rLib path/to/rotlibs --psel "NAME CA WITHIN 25 OF CHAIN A" --o out.cont
 ```
 
 Library API:

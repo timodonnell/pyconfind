@@ -41,6 +41,8 @@ from .rotlib import load_library
 @click.option("--pp", "include_pp", is_flag=True, help="Include phi/psi in per-position rows.")
 @click.option("--omg", "include_omega", is_flag=True, help="Include omega in per-position rows.")
 @click.option("--pf", "print_filename", is_flag=True, help="Append the PDB filename to per-position rows.")
+@click.option("--psel", "pre_select", type=str, default=None, help="Pre-selection: keep only residues whose CA satisfies this selection.")
+@click.option("--sel", "focus", type=str, default=None, help="Focus: compute/output only residues whose CA satisfies this selection (rest kept for clash detection).")
 @click.option("--ren", "renumber", is_flag=True, help="Renumber residues per chain starting from 1.")
 @click.option("--json", "json_output", is_flag=True, help="Emit JSON instead of the legacy text format.")
 @click.option("--native-only", "native_only", is_flag=True, help="At each position, only place rotamers of the native AA.")
@@ -56,6 +58,8 @@ def main(
     include_pp: bool,
     include_omega: bool,
     print_filename: bool,
+    pre_select: str | None,
+    focus: str | None,
     renumber: bool,
     json_output: bool,
     native_only: bool,
@@ -109,6 +113,8 @@ def main(
         analysis = analyze(
             pdb_path,
             rotamer_library=library,
+            pre_select=pre_select,
+            focus=focus,
             renumber=renumber,
             native_only=native_only,
             dcut=dcut,

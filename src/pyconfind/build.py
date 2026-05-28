@@ -62,6 +62,7 @@ class PositionRotamers:
     permanent_contacts: frozenset[int]  # other position indices in unavoidable contact
     fraction_pruned: float
     num_rotamers_placed: int  # total rotamers placed *before* pruning
+    in_focus: bool = True  # False for positions excluded by --sel (no rotamers placed)
 
 
 def build_clash_tree(positions: list[Position]) -> tuple[cKDTree, np.ndarray]:
@@ -110,6 +111,7 @@ def build_position_rotamers(
     do_not_count_cb: bool = True,
     aas: tuple[str, ...] = _DEFAULT_AAS,
     native_only: bool = False,
+    focus_mask: np.ndarray | None = None,
 ) -> list[PositionRotamers]:
     """Place and prune rotamers for every position.
 
@@ -134,11 +136,32 @@ def build_position_rotamers(
         New mode (not in C++): only place rotamers of the native AA at each
         position, instead of substituting in all 18 AAs. The library still
         provides all rotamers for that AA; we just skip the substitutions.
+    focus_mask
+        Optional per-position boolean mask (the C++ ``--sel`` flag). When
+        given, rotamers are only placed for positions where the mask is True.
+        The backbone-clash KD tree still includes *all* positions, so focus
+        rotamers are correctly pruned against the full backbone — matching the
+        C++ semantics where ``--sel`` limits the computed set but keeps the
+        whole structure for collision detection.
     """
     propensity = aa_propensity or DEFAULT_AA_PROPENSITY
     tree, owner = build_clash_tree(positions)
     results: list[PositionRotamers] = []
-    for pos in positions:
+    for idx, pos in enumerate(positions):
+        if focus_mask is not None and not focus_mask[idx]:
+            # Outside the focus set: no rotamers placed (its backbone is still
+            # in the clash tree). Excluded from contacts and output.
+            results.append(
+                PositionRotamers(
+                    position=pos,
+                    rotamers=(),
+                    permanent_contacts=frozenset(),
+                    fraction_pruned=float("nan"),
+                    num_rotamers_placed=0,
+                    in_focus=False,
+                )
+            )
+            continue
         rotamers_here, perm_contacts, frac_pruned, num_placed = _process_position(
             pos,
             library,
@@ -156,6 +179,7 @@ def build_position_rotamers(
                 permanent_contacts=frozenset(perm_contacts),
                 fraction_pruned=frac_pruned,
                 num_rotamers_placed=num_placed,
+                in_focus=True,
             )
         )
     return results
