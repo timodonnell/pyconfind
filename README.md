@@ -5,8 +5,13 @@ the rotamer-based protein side-chain contact-degree analysis introduced in
 Zheng & Grigoryan's work on tertiary structural motifs.
 
 The Python output is **byte-for-byte identical** to the upstream C++ binary
-across every example structure shipped with the original codebase (11/11 PDBs,
-194 / 194 per-position rows, 763 / 763 per-pair contact-degree values).
+on **199 of 200** real structures (100 from the PDB + 100 from the AlphaFold
+DB; see [docs/stress_test_results.md](docs/stress_test_results.md)) and on
+all 11 example structures shipped with the original codebase. The single
+mismatch in the stress test is one freedom row out of ~437,000 output lines.
+
+pyconfind is also slightly faster than the C++ binary: 1.23× speedup
+overall on the real-structure stress test (1.18× PDB, 1.28× AFDB).
 
 ## Install
 
