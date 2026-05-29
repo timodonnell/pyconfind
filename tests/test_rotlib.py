@@ -125,12 +125,23 @@ def test_load_library_phi_180_falls_back_to_wildcard(rotlib_dir: Path) -> None:
     np.testing.assert_array_equal(confs_180, confs_wild)
 
 
-def test_load_library_bb_indep(ebl_path: Path) -> None:
-    lib = load_library(ebl_path)
-    assert not lib.is_backbone_dependent
-    confs, weights = lib.rotamers_for("ARG")
-    assert confs.shape[0] == 97234
-    assert weights.size == 97234
+def test_load_library_rejects_single_file(ebl_path: Path) -> None:
+    """Backbone-independent (single-file) libraries are intentionally
+    unsupported — they would silently misuse the bb-dep conditional weights."""
+    with pytest.raises(ValueError, match="not a directory"):
+        load_library(ebl_path)
+
+
+def test_gly_has_no_rotamers(rotlib_dir: Path) -> None:
+    """GLY is in the EBL pool but absent from BEBL; rotamers_for returns empty
+    rather than raising (regression for the --native-only GLY crash)."""
+    lib = load_library(rotlib_dir)
+    confs, weights = lib.rotamers_for("GLY", phi=None, psi=None)
+    assert confs.shape[0] == 0
+    assert weights.size == 0
+    # A real bb-dep AA still returns rotamers.
+    confs2, _ = lib.rotamers_for("LEU", phi=-60.0, psi=-45.0)
+    assert confs2.shape[0] > 0
 
 
 def test_load_library_missing_files(tmp_path: Path) -> None:

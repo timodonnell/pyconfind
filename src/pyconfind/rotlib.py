@@ -114,7 +114,14 @@ class RotamerLibrary:
             key = (resname, pi, si)
             if key not in self.bin_index:
                 key = (resname, _WILDCARD_BIN, _WILDCARD_BIN)
-        conf_idx = self.bin_index[key]
+        conf_idx = self.bin_index.get(key)
+        if conf_idx is None:
+            # No bin for this residue (e.g. GLY has no sidechain rotamers and
+            # is absent from BEBL entirely). Return an empty rotamer set rather
+            # than raising — the caller places zero rotamers for it. (GLY is
+            # excluded from the default substitution list, but --native-only
+            # queries it directly at GLY positions.)
+            return tmpl.confs[:0], tmpl.weights[:0]
         nr = conf_idx.size
         # Weights come from the first ``nr`` slots of the EBL table —
         # *not* from the CONFIDX-selected slots. See note above.
@@ -312,25 +319,29 @@ def parse_bebl(
 
 
 def load_library(path: str | Path) -> RotamerLibrary:
-    """Load a rotamer library from a file or directory.
+    """Load a backbone-dependent rotamer library from a directory.
 
-    * If ``path`` is a directory containing ``EBL.out`` and ``BEBL.out``, a
-      backbone-dependent library is returned.
-    * If ``path`` is a single ``EBL.out``-format file, a backbone-independent
-      library is returned (using the global weights in that file).
+    ``path`` must be a directory containing ``EBL.out`` (the conformer pool)
+    and ``BEBL.out`` (the backbone-dependent φ/ψ index).
 
-    This mirrors the C++ ``--rLib`` argument handling.
+    Backbone-*independent* libraries (a single EBL-format file) are not
+    supported: the EBL.out bundled with confind stores per-(φ,ψ)-bin
+    *conditional* weights, so using it on its own would silently apply the
+    wrong weights. Only the validated backbone-dependent mode is exposed.
     """
     p = Path(path)
-    if p.is_dir():
-        residues = parse_ebl(p / "EBL.out")
-        phi_bin, psi_bin, bin_index = parse_bebl(p / "BEBL.out")
-        return RotamerLibrary(
-            name=p.name,
-            residues=residues,
-            phi_bin=phi_bin,
-            psi_bin=psi_bin,
-            bin_index=bin_index,
+    if not p.is_dir():
+        raise ValueError(
+            f"{p} is not a directory. pyconfind requires a backbone-dependent "
+            f"rotamer library directory containing EBL.out and BEBL.out; "
+            f"backbone-independent (single-file) libraries are not supported."
         )
-    residues = parse_ebl(p)
-    return RotamerLibrary(name=p.stem, residues=residues)
+    residues = parse_ebl(p / "EBL.out")
+    phi_bin, psi_bin, bin_index = parse_bebl(p / "BEBL.out")
+    return RotamerLibrary(
+        name=p.name,
+        residues=residues,
+        phi_bin=phi_bin,
+        psi_bin=psi_bin,
+        bin_index=bin_index,
+    )

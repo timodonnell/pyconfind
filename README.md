@@ -12,10 +12,11 @@ Zheng & Grigoryan's work on tertiary structural motifs.
 The Python output is **byte-for-byte identical** to the upstream C++ binary
 on **248 of 253** real structures tested (100 single-chain PDB + 100 AlphaFold
 DB + 50 multi-chain + 3 high-resolution; see
-[docs/stress_test_results.md](docs/stress_test_results.md)) and on all 11
-example structures shipped with the original codebase. The 5 exceptions are
+[docs/stress_test_results.md](docs/stress_test_results.md)), plus a further 100
+RCSB entries cross-checked as both PDB and mmCIF. The 5 exceptions are
 insertion-code structures where the C++ ordering relies on undefined behavior
-(documented).
+(documented). The test suite runs against real PDB/mmCIF structures with
+committed C++-reference contact maps.
 
 pyconfind is also faster than the C++ binary, with two interchangeable
 contact-degree backends (both byte-identical to the reference):

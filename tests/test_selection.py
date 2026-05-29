@@ -1,4 +1,9 @@
-"""Tests for the atom-selection language and --psel/--sel integration."""
+"""Atom-selection language + --psel/--sel, validated against C++ on 1UBQ.
+
+1UBQ is single-chain, so the boolean grammar (AND/OR/NOT/parens, WITHIN) is
+exercised via resi/resn/name predicates. Byte-identity vs the C++ binary is
+the correctness gate (skips when the binary/library are absent, e.g. in CI).
+"""
 
 from __future__ import annotations
 
@@ -11,57 +16,10 @@ import numpy as np
 import pytest
 
 from pyconfind import analyze, format_confind_text
-from pyconfind.pdb import read_pdb
+from pyconfind.pdb import read_structure
 from pyconfind.rotlib import load_library
 from pyconfind.selection import select_atom_mask, select_residue_mask
 from pyconfind.structure import positions_from_atoms
-
-
-def test_select_atom_mask_basic(examples_dir: Path) -> None:
-    atoms = read_pdb(examples_dir / "example0002.pdb")
-    # CHAIN
-    chain_a = select_atom_mask(atoms, "chain A")
-    assert chain_a.sum() > 0
-    assert set(atoms.chain[chain_a].tolist()) == {"A"}
-    # NAME
-    ca = select_atom_mask(atoms, "name CA")
-    assert set(atoms.name[ca].tolist()) == {"CA"}
-    # combined
-    ca_a = select_atom_mask(atoms, "name CA and chain A")
-    assert (ca_a == (chain_a & ca)).all()
-
-
-def test_select_resi_range_and_list(examples_dir: Path) -> None:
-    atoms = read_pdb(examples_dir / "example0002.pdb")
-    rng = select_atom_mask(atoms, "resi 2-5")
-    assert atoms.resnum[rng].min() >= 2 and atoms.resnum[rng].max() <= 5
-    lst = select_atom_mask(atoms, "resi 2+4+6")
-    assert set(atoms.resnum[lst].tolist()) == {2, 4, 6}
-
-
-def test_select_precedence_and_not(examples_dir: Path) -> None:
-    atoms = read_pdb(examples_dir / "example0002.pdb")
-    # AND binds tighter than OR
-    m = select_residue_mask(atoms, "resi 2 OR resi 3 AND chain B")
-    positions = positions_from_atoms(atoms)
-    got = {(positions[i].chain, positions[i].resnum) for i in np.flatnonzero(m)}
-    # resi2 (all chains) ∪ (resi3 ∧ chainB)
-    expected_resi2 = {(p.chain, p.resnum) for p in positions if p.resnum == 2}
-    expected_b3 = {(p.chain, p.resnum) for p in positions if p.resnum == 3 and p.chain == "B"}
-    assert got == expected_resi2 | expected_b3
-    # parens override
-    m2 = select_residue_mask(atoms, "(resi 2 OR resi 3) AND chain B")
-    got2 = {(positions[i].chain, positions[i].resnum) for i in np.flatnonzero(m2)}
-    assert got2 == {("B", 2), ("B", 3)}
-
-
-def test_select_within(examples_dir: Path) -> None:
-    atoms = read_pdb(examples_dir / "example0002.pdb")
-    near = select_residue_mask(atoms, "NAME CA WITHIN 8 OF CHAIN B")
-    assert near.sum() > 0
-
-
-# --- byte-identity vs C++ for --sel / --psel ------------------------------
 
 _CPP = (
     Path(__file__).resolve().parents[1]
@@ -69,60 +27,92 @@ _CPP = (
 )
 
 
-def _cpp_output(pdb: Path, rotlib: Path, flag: str, sel: str) -> str:
-    out = Path(tempfile.mktemp(suffix=".cont"))
-    subprocess.run(
-        [str(_CPP), "--p", str(pdb), "--rLib", str(rotlib), flag, sel, "--o", str(out)],
-        check=True, capture_output=True,
-    )
-    txt = out.read_text()
-    out.unlink()
-    return txt
+def test_select_atom_mask_basic(structures_dir: Path) -> None:
+    atoms = read_structure(structures_dir / "1UBQ.pdb")
+    chain_a = select_atom_mask(atoms, "chain A")
+    assert chain_a.all()  # 1UBQ is all chain A
+    ca = select_atom_mask(atoms, "name CA")
+    assert set(atoms.name[ca].tolist()) == {"CA"}
+    ca_resn = select_atom_mask(atoms, "name CA and resn GLY")
+    assert set(atoms.resname[ca_resn].tolist()) == {"GLY"}
+
+
+def test_select_resi_range_and_list(structures_dir: Path) -> None:
+    atoms = read_structure(structures_dir / "1UBQ.pdb")
+    rng = select_atom_mask(atoms, "resi 2-5")
+    assert atoms.resnum[rng].min() >= 2 and atoms.resnum[rng].max() <= 5
+    lst = select_atom_mask(atoms, "resi 2+4+6")
+    assert set(atoms.resnum[lst].tolist()) == {2, 4, 6}
+
+
+def test_select_precedence_and_not(structures_dir: Path) -> None:
+    atoms = read_structure(structures_dir / "1UBQ.pdb")
+    positions = positions_from_atoms(atoms)
+    # AND binds tighter than OR: resi1-10 ∪ (resi 20-40 ∧ GLY)
+    m = select_residue_mask(atoms, "resi 1-10 OR resi 20-40 AND resn GLY")
+    got = {positions[i].resnum for i in np.flatnonzero(m)}
+    exp = {p.resnum for p in positions if 1 <= p.resnum <= 10}
+    exp |= {p.resnum for p in positions if 20 <= p.resnum <= 40 and p.resname == "GLY"}
+    assert got == exp
+    # Parens override precedence
+    m2 = select_residue_mask(atoms, "(resi 1-10 OR resi 20-40) AND NOT resn GLY")
+    got2 = {positions[i].resnum for i in np.flatnonzero(m2)}
+    exp2 = {p.resnum for p in positions
+            if (1 <= p.resnum <= 10 or 20 <= p.resnum <= 40) and p.resname != "GLY"}
+    assert got2 == exp2
+
+
+def test_select_within(structures_dir: Path) -> None:
+    atoms = read_structure(structures_dir / "1UBQ.pdb")
+    near = select_residue_mask(atoms, "NAME CA WITHIN 8 OF resi 40")
+    assert 0 < near.sum() < atoms.num_positions
 
 
 @pytest.mark.parametrize(
     ("flag", "sel", "kw"),
     [
-        ("--sel", "chain A", {"focus": "chain A"}),
-        ("--sel", "resi 2-5", {"focus": "resi 2-5"}),
-        ("--sel", "NAME CA WITHIN 8 OF CHAIN B", {"focus": "NAME CA WITHIN 8 OF CHAIN B"}),
-        ("--sel", "resi 2 AND NOT chain A", {"focus": "resi 2 AND NOT chain A"}),
-        ("--psel", "chain B", {"pre_select": "chain B"}),
-        ("--psel", "chain A OR chain C", {"pre_select": "chain A OR chain C"}),
-        ("--psel", "resi 1-6", {"pre_select": "resi 1-6"}),
+        ("--sel", "resi 1-30", {"focus": "resi 1-30"}),
+        ("--sel", "resn GLY+ALA", {"focus": "resn GLY+ALA"}),
+        ("--sel", "NAME CA WITHIN 8 OF resi 40", {"focus": "NAME CA WITHIN 8 OF resi 40"}),
+        ("--sel", "resi 1-40 AND NOT resi 15-25", {"focus": "resi 1-40 AND NOT resi 15-25"}),
+        ("--psel", "resi 1-50", {"pre_select": "resi 1-50"}),
+        ("--psel", "resi 1-20 OR resi 60-76", {"pre_select": "resi 1-20 OR resi 60-76"}),
     ],
 )
 def test_sel_psel_byte_identical(
-    examples_dir: Path, rotlib_dir: Path, flag: str, sel: str, kw: dict
+    structures_dir: Path, rotlib_dir: Path, flag: str, sel: str, kw: dict
 ) -> None:
     if not _CPP.exists():
         pytest.skip("C++ reference binary not built")
-    pdb = examples_dir / "example0002.pdb"
+    pdb = structures_dir / "1UBQ.pdb"
     lib = load_library(rotlib_dir)
-    cpp = _cpp_output(pdb, rotlib_dir, flag, sel)
+    out = Path(tempfile.mktemp(suffix=".cont"))
+    subprocess.run(
+        [str(_CPP), "--p", str(pdb), "--rLib", str(rotlib_dir), flag, sel, "--o", str(out)],
+        check=True, capture_output=True,
+    )
+    cpp = out.read_text()
+    out.unlink()
     a = analyze(pdb, rotamer_library=lib, **kw)
-    mine = format_confind_text(a.positions, a.report)
-    assert mine == cpp, f"{flag} '{sel}' differs from C++"
+    assert format_confind_text(a.positions, a.report) == cpp, f"{flag} '{sel}' differs"
 
 
-def test_cli_sel_flag(examples_dir: Path, rotlib_dir: Path, tmp_path: Path) -> None:
-    """The --sel CLI flag should restrict output to focus residues."""
+def test_cli_sel_flag(structures_dir: Path, mini_rotlib: Path, tmp_path: Path) -> None:
+    """The --sel CLI flag restricts output to the focus residues (CI: mini lib)."""
     out = tmp_path / "out.cont"
     subprocess.run(
         [
             sys.executable, "-m", "pyconfind.cli",
-            "--p", str(examples_dir / "example0002.pdb"),
-            "--rLib", str(rotlib_dir),
+            "--p", str(structures_dir / "1UBQ.pdb"),
+            "--rLib", str(mini_rotlib),
             "--o", str(out),
-            "--sel", "chain A",
+            "--sel", "resi 1-10",
         ],
         check=True, capture_output=True,
     )
-    text = out.read_text()
-    # Only chain A positions in sumcond rows.
-    sumcond_chains = {
-        line.split("\t")[1].split(",")[0]
-        for line in text.splitlines()
+    resnums = {
+        int(line.split("\t")[1].split(",")[1])
+        for line in out.read_text().splitlines()
         if line.startswith("sumcond")
     }
-    assert sumcond_chains == {"A"}
+    assert resnums == set(range(1, 11))

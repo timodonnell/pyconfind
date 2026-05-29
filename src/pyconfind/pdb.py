@@ -30,8 +30,8 @@ class Atoms:
     ``position_index`` groups atoms into positions: atoms with the same value
     belong to the same (chain, resnum, icode) position. ``identity_index``
     groups atoms within a position by resname (a Position may have multiple
-    Identities if a PDB has overlapping alternative residue types — confind's
-    ``example0000.pdb`` puts both ILE and LEU at position 2).
+    Identities if a structure has overlapping alternative residue types at the
+    same chain/resnum/icode).
 
     Positions appear in their input PDB order; identities within a position
     appear in input order; atoms within an identity appear in input order.

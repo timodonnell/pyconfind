@@ -2,7 +2,13 @@
 
 from .api import Analysis, analyze
 from .data import ROTAMER_LIBRARY_URL, download_rotamer_library
-from .output import OutputOptions, format_confind_text, format_json
+from .output import (
+    OutputOptions,
+    ParsedConfind,
+    format_confind_text,
+    format_json,
+    parse_confind_text,
+)
 from .pdb import read_pdb, read_structure
 from .rotlib import RotamerLibrary, load_library
 
@@ -12,12 +18,14 @@ __all__ = [
     "ROTAMER_LIBRARY_URL",
     "Analysis",
     "OutputOptions",
+    "ParsedConfind",
     "RotamerLibrary",
     "analyze",
     "download_rotamer_library",
     "format_confind_text",
     "format_json",
     "load_library",
+    "parse_confind_text",
     "read_pdb",
     "read_structure",
 ]

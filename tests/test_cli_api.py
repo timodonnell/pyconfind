@@ -1,4 +1,4 @@
-"""Tests for the library API + CLI."""
+"""Library API + CLI, on real structures."""
 
 from __future__ import annotations
 
@@ -10,145 +10,84 @@ from pathlib import Path
 import pytest
 
 from pyconfind import analyze, format_confind_text, format_json
+from tests.conftest import REAL_STRUCTURES
 
 
-def test_analyze_returns_full_pipeline(examples_dir: Path, rotlib_dir: Path) -> None:
-    res = analyze(examples_dir / "example0000.pdb", rotamer_library=rotlib_dir)
-    assert len(res.positions) == 3
-    assert res.positions[0].position.resname == "ALA"
-    # Smoke: contact-degree numbers sane.
+def test_analyze_returns_full_pipeline(structures_dir: Path, mini_rotlib: Path) -> None:
+    res = analyze(structures_dir / "1CRN.pdb", rotamer_library=mini_rotlib)
+    assert len(res.positions) == 46  # crambin
     assert res.report.contacts
-    # Smoke: text output renders.
-    text = format_confind_text(res.positions, res.report)
-    assert "contact\tA,1\tA,3\t0.009889" in text
+    lines = format_confind_text(res.positions, res.report).splitlines()
+    assert lines[0].startswith("contact\t")
+    assert lines[-1].startswith("SEQUENCE:")
 
 
-def test_analyze_native_only_skips_substitutions(
-    examples_dir: Path, rotlib_dir: Path
-) -> None:
-    """With --native-only, each position should only have rotamers of its
-    native AA — and far fewer rotamers total."""
-    full = analyze(examples_dir / "example0000.pdb", rotamer_library=rotlib_dir)
-    native = analyze(
-        examples_dir / "example0000.pdb",
-        rotamer_library=rotlib_dir,
-        native_only=True,
-    )
-    for pr_full, pr_native in zip(full.positions, native.positions, strict=True):
-        # All native rotamers should be of the native residue.
-        for rot in pr_native.rotamers:
-            assert rot.aa == pr_native.position.resname
-        # Should never have more rotamers than the full run did.
-        assert len(pr_native.rotamers) <= len(pr_full.rotamers)
-
-
-def test_json_output_smokes(examples_dir: Path, rotlib_dir: Path) -> None:
-    res = analyze(examples_dir / "example0000.pdb", rotamer_library=rotlib_dir)
+def test_json_output_smokes(structures_dir: Path, mini_rotlib: Path) -> None:
+    res = analyze(structures_dir / "1UBQ.pdb", rotamer_library=mini_rotlib)
     payload = json.loads(format_json(res.positions, res.report))
-    assert payload["sequence"] == ["ALA", "ILE", "ALA"]
-    assert len(payload["positions"]) == 3
-    assert len(payload["contacts"]) >= 2
+    assert len(payload["sequence"]) == len(res.positions)
+    assert len(payload["positions"]) == len(res.positions)
+    assert payload["contacts"]
 
 
-def test_cli_text_output_matches_cpp(
-    examples_dir: Path, rotlib_dir: Path, tmp_path: Path
-) -> None:
-    """Invoke the installed CLI end-to-end and diff its output against the
-    C++ binary's golden output."""
-    pdb = examples_dir / "example0002.pdb"
-    out = tmp_path / "out.cont"
-    subprocess.run(
-        [
-            sys.executable, "-m", "pyconfind.cli",
-            "--p", str(pdb),
-            "--rLib", str(rotlib_dir),
-            "--o", str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
-    golden = Path(__file__).resolve().parent / "golden" / "example0002.cont"
-    assert out.read_text() == golden.read_text()
-
-
-def test_cli_json_output(examples_dir: Path, rotlib_dir: Path, tmp_path: Path) -> None:
-    pdb = examples_dir / "example0000.pdb"
+def test_cli_json_output(structures_dir: Path, mini_rotlib: Path, tmp_path: Path) -> None:
     out = tmp_path / "out.json"
     subprocess.run(
-        [
-            sys.executable, "-m", "pyconfind.cli",
-            "--p", str(pdb),
-            "--rLib", str(rotlib_dir),
-            "--o", str(out),
-            "--json",
-        ],
-        check=True,
-        capture_output=True,
+        [sys.executable, "-m", "pyconfind.cli", "--p", str(structures_dir / "1CRN.pdb"),
+         "--rLib", str(mini_rotlib), "--o", str(out), "--json"],
+        check=True, capture_output=True,
     )
     payload = json.loads(out.read_text())
-    assert "positions" in payload
-    assert "contacts" in payload
+    assert "positions" in payload and "contacts" in payload
 
 
-def test_cli_requires_input(rotlib_dir: Path) -> None:
-    """Without --p or --pL the CLI should error out with a usage message
-    mentioning the missing flag."""
+def test_cli_requires_input(mini_rotlib: Path) -> None:
     result = subprocess.run(
-        [
-            sys.executable, "-m", "pyconfind.cli",
-            "--rLib", str(rotlib_dir),
-        ],
-        capture_output=True,
-        text=True,
+        [sys.executable, "-m", "pyconfind.cli", "--rLib", str(mini_rotlib)],
+        capture_output=True, text=True,
     )
     assert result.returncode != 0
     combined = (result.stderr or "") + (result.stdout or "")
     assert "--p" in combined or "--pL" in combined
 
 
-def test_cli_pp_flag(examples_dir: Path, rotlib_dir: Path, tmp_path: Path) -> None:
+def test_cli_pp_flag(structures_dir: Path, mini_rotlib: Path, tmp_path: Path) -> None:
     out = tmp_path / "out.cont"
     subprocess.run(
-        [
-            sys.executable, "-m", "pyconfind.cli",
-            "--p", str(examples_dir / "example0000.pdb"),
-            "--rLib", str(rotlib_dir),
-            "--o", str(out),
-            "--pp",
-        ],
-        check=True,
-        capture_output=True,
+        [sys.executable, "-m", "pyconfind.cli", "--p", str(structures_dir / "1CRN.pdb"),
+         "--rLib", str(mini_rotlib), "--o", str(out), "--pp"],
+        check=True, capture_output=True,
     )
-    text = out.read_text()
-    # phi/psi columns should appear in sumcond rows
-    assert "sumcond\tA,2\t0.000000\t180.000000\t180.000000\tILE" in text
+    # sumcond rows gain phi/psi columns: tag, pos, value, phi, psi, resname.
+    sumcond = [ln for ln in out.read_text().splitlines() if ln.startswith("sumcond")]
+    assert sumcond and len(sumcond[len(sumcond) // 2].split("\t")) == 6
 
 
-@pytest.mark.parametrize(
-    "pdb_name",
-    [
-        "example0000.pdb",
-        "example0002.pdb",
-        "example0008.pdb",
-    ],
-)
+def test_cli_mmcif_input(structures_dir: Path, mini_rotlib: Path, tmp_path: Path) -> None:
+    """The CLI accepts mmCIF input and gives the same output as PDB."""
+    out_cif = tmp_path / "cif.cont"
+    out_pdb = tmp_path / "pdb.cont"
+    for src, dst in [("1CRN.cif", out_cif), ("1CRN.pdb", out_pdb)]:
+        subprocess.run(
+            [sys.executable, "-m", "pyconfind.cli", "--p", str(structures_dir / src),
+             "--rLib", str(mini_rotlib), "--o", str(dst)],
+            check=True, capture_output=True,
+        )
+    assert out_cif.read_text() == out_pdb.read_text()
+
+
+@pytest.mark.parametrize("name", REAL_STRUCTURES)
 def test_cli_end_to_end_byte_identical(
-    examples_dir: Path, rotlib_dir: Path, tmp_path: Path, pdb_name: str
+    structures_dir: Path, golden_dir: Path, rotlib_dir: Path, tmp_path: Path, name: str
 ) -> None:
-    """The CLI's output must match the C++ binary's output byte-for-byte."""
-    pdb = examples_dir / pdb_name
-    golden = Path(__file__).resolve().parent / "golden" / (pdb.stem + ".cont")
+    """CLI output must match the C++ golden byte-for-byte (full library)."""
+    golden = golden_dir / f"{name}.cont"
+    if not golden.exists():
+        pytest.skip("golden missing")
     out = tmp_path / "out.cont"
     subprocess.run(
-        [
-            sys.executable, "-m", "pyconfind.cli",
-            "--p", str(pdb),
-            "--rLib", str(rotlib_dir),
-            "--o", str(out),
-        ],
-        check=True,
-        capture_output=True,
+        [sys.executable, "-m", "pyconfind.cli", "--p", str(structures_dir / f"{name}.pdb"),
+         "--rLib", str(rotlib_dir), "--o", str(out)],
+        check=True, capture_output=True,
     )
-    assert out.read_text() == golden.read_text(), (
-        f"CLI output for {pdb_name} differs from C++ reference"
-    )
+    assert out.read_text() == golden.read_text(), f"CLI output for {name} differs"

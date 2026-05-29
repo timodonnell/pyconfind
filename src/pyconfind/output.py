@@ -25,10 +25,56 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .build import PositionRotamers
 from .contacts import ContactReport
+
+
+@dataclass(frozen=True)
+class ParsedConfind:
+    """Parsed confind text output (e.g. a C++ ``.cont`` file).
+
+    Lets you read a reference contact map back in — the inverse of
+    :func:`format_confind_text` — for comparison or plotting.
+    """
+
+    #: ``{(pos_i_id, pos_j_id): degree}`` for ``contact`` rows.
+    contacts: dict[tuple[str, str], float] = field(default_factory=dict)
+    #: ``{pos_id: value}`` for each per-position row type.
+    sumcond: dict[str, float] = field(default_factory=dict)
+    crwdnes: dict[str, float] = field(default_factory=dict)
+    freedom: dict[str, float] = field(default_factory=dict)
+    #: ``[(pos_i_id, pos_j_id)]`` for ``percont`` rows.
+    percont: list[tuple[str, str]] = field(default_factory=list)
+    #: Position ids in output order (from the per-position rows).
+    order: list[str] = field(default_factory=list)
+
+
+def parse_confind_text(text: str) -> ParsedConfind:
+    """Parse confind ``.cont`` text (C++ or pyconfind output) into a structure.
+
+    Tolerant of the optional phi/psi/omega/filename columns: per-position rows
+    are ``<tag> <pos> <value> [..extra..] <resname> [..]`` so the value is
+    always field index 2.
+    """
+    out = ParsedConfind()
+    seen: set[str] = set()
+    for line in text.splitlines():
+        parts = line.split("\t")
+        tag = parts[0]
+        if tag == "contact" and len(parts) >= 4:
+            out.contacts[(parts[1], parts[2])] = float(parts[3])
+        elif tag == "percont" and len(parts) >= 3:
+            out.percont.append((parts[1], parts[2]))
+        elif tag in ("sumcond", "crwdnes", "freedom") and len(parts) >= 3:
+            pos = parts[1]
+            val = float(parts[2]) if parts[2] not in ("-nan", "nan") else math.nan
+            getattr(out, tag)[pos] = val
+            if tag == "sumcond" and pos not in seen:
+                seen.add(pos)
+                out.order.append(pos)
+    return out
 
 
 @dataclass(frozen=True)
