@@ -4,6 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/pyconfind.svg)](https://pypi.org/project/pyconfind/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timodonnell/pyconfind/blob/main/examples/pyconfind_demo.ipynb)
 
 A modern Python implementation of [confind](https://grigoryanlab.org/confind/) —
 the rotamer-based protein side-chain contact-degree analysis introduced in
