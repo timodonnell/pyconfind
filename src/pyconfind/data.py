@@ -11,13 +11,15 @@ import tarfile
 import urllib.request
 from pathlib import Path
 
-__version_tag__ = "v0.1.0"
+# The library asset is static, so it is hosted once on the v0.1.0 release and
+# reused by every package version (no need to re-upload it on each release).
+_ROTLIB_RELEASE = "v0.1.0"
 
 #: URL of the packaged rotamer library (``rotlibs/EBL.out`` + ``BEBL.out``)
-#: attached to the pyconfind release.
+#: attached to the pyconfind GitHub release.
 ROTAMER_LIBRARY_URL = (
     f"https://github.com/timodonnell/pyconfind/releases/download/"
-    f"{__version_tag__}/rotlibs.tar.gz"
+    f"{_ROTLIB_RELEASE}/rotlibs.tar.gz"
 )
 
 

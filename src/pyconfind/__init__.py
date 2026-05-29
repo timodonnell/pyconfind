@@ -12,7 +12,7 @@ from .output import (
 from .pdb import read_pdb, read_structure
 from .rotlib import RotamerLibrary, load_library
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ROTAMER_LIBRARY_URL",
