@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .build import PositionRotamers, build_position_rotamers
 from .contacts import ContactReport, compute_contacts
+from .data import cached_rotamer_library
 from .pdb import filter_atoms_by_position, read_structure
 from .rotlib import RotamerLibrary, load_library
 from .selection import select_residue_mask
@@ -73,7 +74,7 @@ class Analysis:
 
 def analyze(
     pdb_path: str | Path,
-    rotamer_library: str | Path | RotamerLibrary,
+    rotamer_library: str | Path | RotamerLibrary | None = None,
     *,
     pre_select: str | None = None,
     focus: str | None = None,
@@ -92,9 +93,10 @@ def analyze(
     pdb_path
         Path to the input PDB.
     rotamer_library
-        Either a path to a rotamer library directory (e.g. ``./rotlibs``
-        containing ``EBL.out`` + ``BEBL.out``) or a single ``EBL.out`` file
-        for bb-indep operation, or a pre-loaded :class:`RotamerLibrary`.
+        A backbone-dependent rotamer library directory (containing ``EBL.out``
+        + ``BEBL.out``) or a pre-loaded :class:`RotamerLibrary`. If ``None``
+        (the default), the Dunbrack 2010 library is downloaded once and cached
+        per-user (see :func:`pyconfind.cached_rotamer_library`).
     pre_select
         MSL selection string (the ``--psel`` flag). Only residues whose CA
         atom satisfies this selection are kept in the structure before
@@ -129,6 +131,8 @@ def analyze(
     pdb_path = Path(pdb_path)
     if isinstance(rotamer_library, RotamerLibrary):
         library = rotamer_library
+    elif rotamer_library is None:
+        library = load_library(cached_rotamer_library())
     else:
         library = load_library(rotamer_library)
     # gemmi reads both PDB and mmCIF; format is auto-detected.

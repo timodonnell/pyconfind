@@ -59,20 +59,30 @@ Click the badge to run it on a free Colab CPU runtime.
 
 ## Quick start
 
-CLI (matches the original `confind` flag names, so existing pipelines drop in):
+The rotamer library is optional — if you don't pass one, pyconfind downloads
+the Dunbrack 2010 library once (~6 MB) and caches it per-user (via
+`platformdirs`), so the simplest invocation is just:
 
 ```bash
-pyconfind --p input.pdb --rLib path/to/rotlibs --o out.cont
+pyconfind --p input.pdb --o out.cont          # library auto-downloaded + cached
+```
+
+CLI (matches the original `confind` flag names, so existing pipelines drop in;
+pass `--rLib` to use your own library):
+
+```bash
 # Inputs may be PDB or mmCIF (format auto-detected via gemmi):
-pyconfind --p input.cif --rLib path/to/rotlibs --o out.cont
+pyconfind --p input.cif --o out.cont
 # Modern structured output:
-pyconfind --p input.pdb --rLib path/to/rotlibs --json --o out.json
+pyconfind --p input.pdb --json --o out.json
 # Only consider the native AA at each position (no AA substitution):
-pyconfind --p input.pdb --rLib path/to/rotlibs --native-only --o out.cont
+pyconfind --p input.pdb --native-only --o out.cont
 # Restrict the computed/output residues (MSL selection language):
-pyconfind --p input.pdb --rLib path/to/rotlibs --sel "chain A AND resi 20-60" --o out.cont
+pyconfind --p input.pdb --sel "chain A AND resi 20-60" --o out.cont
 # Pre-select part of the structure before anything runs:
-pyconfind --p input.pdb --rLib path/to/rotlibs --psel "NAME CA WITHIN 25 OF CHAIN A" --o out.cont
+pyconfind --p input.pdb --psel "NAME CA WITHIN 25 OF CHAIN A" --o out.cont
+# Use your own library:
+pyconfind --p input.pdb --rLib path/to/rotlibs --o out.cont
 ```
 
 Library API:
@@ -80,7 +90,7 @@ Library API:
 ```python
 from pyconfind import analyze, format_confind_text
 
-result = analyze("input.pdb", rotamer_library="path/to/rotlibs")
+result = analyze("input.pdb")  # rotamer library auto-downloaded + cached
 print(format_confind_text(result.positions, result.report))
 
 # Inspect raw contacts:

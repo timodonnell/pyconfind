@@ -5,7 +5,7 @@ pipelines work unchanged:
 
 * ``--p``       input PDB (or use ``--pL`` for a list file)
 * ``--o``       output file
-* ``--rLib``    rotamer library directory or EBL.out file
+* ``--rLib``    rotamer library directory (optional; auto-downloaded + cached if omitted)
 * ``--pp``      include phi/psi in per-position rows
 * ``--omg``     include omega in per-position rows
 * ``--pf``      append the PDB filename to per-position rows
@@ -25,6 +25,7 @@ from pathlib import Path
 import click
 
 from .api import analyze
+from .data import cached_rotamer_library
 from .output import OutputOptions, format_confind_text, format_json
 from .rotlib import load_library
 
@@ -37,7 +38,7 @@ from .rotlib import load_library
 @click.option("--pL", "pdb_list_file", type=click.Path(exists=True, path_type=Path), help="File listing PDB paths, one per line.")
 @click.option("--o", "out_file", type=click.Path(path_type=Path), help="Output file path. Stdout if omitted.")
 @click.option("--oL", "out_list_file", type=click.Path(path_type=Path), help="File listing output paths for batch mode.")
-@click.option("--rLib", "rotlib_path", required=True, type=click.Path(exists=True, path_type=Path), help="Rotamer library directory (with EBL.out and BEBL.out) or a single EBL.out file.")
+@click.option("--rLib", "rotlib_path", type=click.Path(exists=True, path_type=Path), default=None, help="Rotamer library directory (EBL.out + BEBL.out). If omitted, the Dunbrack 2010 library is downloaded once and cached per-user.")
 @click.option("--pp", "include_pp", is_flag=True, help="Include phi/psi in per-position rows.")
 @click.option("--omg", "include_omega", is_flag=True, help="Include omega in per-position rows.")
 @click.option("--pf", "print_filename", is_flag=True, help="Append the PDB filename to per-position rows.")
@@ -55,7 +56,7 @@ def main(
     pdb_list_file: Path | None,
     out_file: Path | None,
     out_list_file: Path | None,
-    rotlib_path: Path,
+    rotlib_path: Path | None,
     include_pp: bool,
     include_omega: bool,
     print_filename: bool,
@@ -108,8 +109,10 @@ def main(
     else:
         out_paths = [None] * len(pdb_paths)
 
-    # Pre-load the library once so we don't re-parse EBL.out per PDB.
-    library = load_library(rotlib_path)
+    # Pre-load the library once so we don't re-parse EBL.out per PDB. With no
+    # --rLib, fall back to the per-user cached Dunbrack library (downloaded on
+    # first use).
+    library = load_library(rotlib_path if rotlib_path is not None else cached_rotamer_library())
 
     for pdb_path, out_path in zip(pdb_paths, out_paths, strict=True):
         analysis = analyze(

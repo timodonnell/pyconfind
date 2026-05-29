@@ -7,6 +7,7 @@ in the wheel. :func:`download_rotamer_library` fetches and extracts it.
 
 from __future__ import annotations
 
+import sys
 import tarfile
 import urllib.request
 from pathlib import Path
@@ -51,6 +52,7 @@ def download_rotamer_library(
     if not force and (dest / "EBL.out").exists() and (dest / "BEBL.out").exists():
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
+    print(f"pyconfind: downloading rotamer library to {dest} ...", file=sys.stderr)
     tmp_tar, _ = urllib.request.urlretrieve(url)  # noqa: S310 (trusted release URL)
     try:
         with tarfile.open(tmp_tar) as tar:
@@ -71,3 +73,17 @@ def download_rotamer_library(
     finally:
         Path(tmp_tar).unlink(missing_ok=True)
     return dest
+
+
+def cached_rotamer_library(*, url: str = ROTAMER_LIBRARY_URL) -> Path:
+    """Return the rotamer library from a per-user cache, downloading on first use.
+
+    The library is stored under the platform cache directory
+    (``platformdirs.user_cache_dir("pyconfind")/rotlibs``) and reused across
+    runs and projects. This is what :func:`pyconfind.analyze` and the CLI use
+    when no ``rotamer_library`` / ``--rLib`` is given.
+    """
+    import platformdirs
+
+    dest = Path(platformdirs.user_cache_dir("pyconfind")) / "rotlibs"
+    return download_rotamer_library(dest=dest, url=url)

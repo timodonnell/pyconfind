@@ -1,7 +1,11 @@
 """pyconfind — protein side-chain contact-degree analysis."""
 
 from .api import Analysis, analyze
-from .data import ROTAMER_LIBRARY_URL, download_rotamer_library
+from .data import (
+    ROTAMER_LIBRARY_URL,
+    cached_rotamer_library,
+    download_rotamer_library,
+)
 from .output import (
     OutputOptions,
     ParsedConfind,
@@ -12,7 +16,7 @@ from .output import (
 from .pdb import read_pdb, read_structure
 from .rotlib import RotamerLibrary, load_library
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "ROTAMER_LIBRARY_URL",
@@ -21,6 +25,7 @@ __all__ = [
     "ParsedConfind",
     "RotamerLibrary",
     "analyze",
+    "cached_rotamer_library",
     "download_rotamer_library",
     "format_confind_text",
     "format_json",
