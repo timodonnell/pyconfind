@@ -30,6 +30,19 @@ def test_json_output_smokes(structures_dir: Path, mini_rotlib: Path) -> None:
     assert payload["contacts"]
 
 
+def test_json_output_respects_focus_selection(
+    structures_dir: Path, mini_rotlib: Path
+) -> None:
+    res = analyze(
+        structures_dir / "1UBQ.pdb",
+        rotamer_library=mini_rotlib,
+        focus="resi 1-10",
+    )
+    payload = json.loads(format_json(res.positions, res.report))
+    assert [p["resnum"] for p in payload["positions"]] == list(range(1, 11))
+    assert len(payload["sequence"]) == 10
+
+
 def test_cli_json_output(structures_dir: Path, mini_rotlib: Path, tmp_path: Path) -> None:
     out = tmp_path / "out.json"
     subprocess.run(

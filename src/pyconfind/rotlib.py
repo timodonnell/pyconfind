@@ -1,6 +1,7 @@
 """Rotamer library parser for MSL-format Dunbrack-style libraries.
 
-A library consists of two files:
+The validated pyconfind rotamer-library format is a directory containing two
+files:
 
 * ``EBL.out`` — the rotamer pool. For each amino acid:
 
@@ -28,6 +29,9 @@ A library consists of two files:
 Only backbone-dependent libraries are supported: ``load_library`` requires a
 directory containing both ``EBL.out`` and ``BEBL.out`` and rejects a single
 EBL.out-style file with a clear error.
+
+For testing and low-level inspection, :func:`parse_ebl` can still read a lone
+``EBL.out`` file directly.
 """
 
 from __future__ import annotations
