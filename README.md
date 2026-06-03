@@ -6,9 +6,10 @@
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timodonnell/pyconfind/blob/main/examples/pyconfind_demo.ipynb)
 
-A modern Python implementation of [confind](https://grigoryanlab.org/confind/) —
+A modern Python implementation of [ConFind](https://grigoryanlab.org/confind/) —
 the rotamer-based protein side-chain contact-degree analysis introduced in
-Zheng & Grigoryan's work on tertiary structural motifs.
+[Zheng et al 2015](https://www.cell.com/structure/fulltext/S0969-2126(15)00119-7)
+and [Zheng et al 2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0178272).
 
 The Python output is **byte-for-byte identical** to the upstream C++ binary
 on **248 of 253** real structures tested (100 single-chain PDB + 100 AlphaFold
@@ -116,8 +117,7 @@ Modern Dunbrack and Richardson-style libraries are next on the roadmap.
 The original C++ confind substitutes in all 18 non-Gly/Pro amino acids at
 every position and computes contact degree across the full rotamer space.
 pyconfind adds `--native-only`: at each position, only place rotamers of the
-native amino acid (but still consider every rotamer of that AA). Useful when
-you want a contact-degree estimate that holds the sequence fixed.
+native amino acid (but still consider every rotamer of that AA).
 
 ## Validation
 
