@@ -25,13 +25,13 @@ contact-degree backends (both byte-identical to the reference):
 
 * a pure NumPy/SciPy reference, which on its own already beats the C++ binary;
 * an optional **Numba** JIT/multi-threaded backend (`pip install pyconfind[fast]`)
-  that is ~2-3× faster again.
+  that is ~3× faster again.
 
 With the Numba backend and the rotamer library pre-loaded, per-structure
-analysis is **~5-9× faster** than the C++ binary in full mode (median ~7.8×
-over the benchmark set). **`native_only=True`** runs an additional ~23×
-faster again — under 0.55 s for everything in the benchmark set (largest
-555 residues), and ~0.1 s for small ones.
+analysis is **~7-11× faster** than the C++ binary in full mode (median ~10×
+over the benchmark set). **`native_only=True`** runs another ~26× faster
+again — under 0.36 s for everything in the benchmark set (largest 555
+residues), and ~0.07 s for small ones.
 
 ![runtime vs sequence length](docs/timing_vs_length.png)
 
