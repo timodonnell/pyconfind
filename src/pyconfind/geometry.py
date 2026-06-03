@@ -188,4 +188,5 @@ def place_batch(
     bond = np.ascontiguousarray(bond, dtype=np.float64)
     angle_deg = np.ascontiguousarray(angle_deg, dtype=np.float64)
     dihedral_deg = np.ascontiguousarray(dihedral_deg, dtype=np.float64)
-    return _place_batch_kernel(a, b, c, bond, angle_deg, dihedral_deg)
+    result: np.ndarray = _place_batch_kernel(a, b, c, bond, angle_deg, dihedral_deg)
+    return result
