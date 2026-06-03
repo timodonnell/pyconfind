@@ -22,24 +22,24 @@ counted twice.
 
 | Structure    | Residues | numpy backend | numba backend | C++ (analysis only) | numba vs C++ |
 |--------------|---------:|--------------:|--------------:|--------------------:|-------------:|
-| AF-A1L190-F1 |       88 |      3.11 s   |      1.62 s   |              8.46 s |       5.2×   |
-| AF-A6NNB3-F1 |      132 |      5.12 s   |      2.64 s   |             14.37 s |       5.4×   |
-| AF-A6NI61-F1 |      221 |     10.54 s   |      4.54 s   |             30.42 s |       6.7×   |
-| 1AB9         |      242 |     14.42 s   |      5.04 s   |             39.21 s |       7.8×   |
-| AF-A1L3X0-F1 |      281 |     14.71 s   |      6.13 s   |             44.74 s |       7.3×   |
-| 1C08         |      350 |     22.32 s   |      7.73 s   |             64.34 s |       8.3×   |
-| 1B0R         |      375 |     23.34 s   |      8.35 s   |             69.00 s |       8.3×   |
-| 1BWU         |      430 |     26.66 s   |      9.18 s   |             76.38 s |       8.3×   |
-| 1AVG         |      442 |     27.92 s   |      9.78 s   |             80.89 s |       8.3×   |
-| 1C04         |      488 |     26.93 s   |     10.05 s   |             71.73 s |       7.1×   |
-| 1BQL         |      555 |     36.23 s   |     12.73 s   |            105.77 s |       8.3×   |
+| AF-A1L190-F1 |       88 |      3.13 s   |      1.57 s   |              8.51 s |       5.4×   |
+| AF-A6NNB3-F1 |      132 |      5.11 s   |      2.60 s   |             14.48 s |       5.6×   |
+| AF-A6NI61-F1 |      221 |     10.38 s   |      4.39 s   |             30.46 s |       6.9×   |
+| 1AB9         |      242 |     14.92 s   |      5.05 s   |             39.22 s |       7.8×   |
+| AF-A1L3X0-F1 |      281 |     14.49 s   |      5.86 s   |             44.32 s |       7.6×   |
+| 1C08         |      350 |     21.39 s   |      7.66 s   |             64.05 s |       8.4×   |
+| 1B0R         |      375 |     23.20 s   |      8.27 s   |             69.10 s |       8.4×   |
+| 1BWU         |      430 |     26.33 s   |      9.05 s   |             76.46 s |       8.5×   |
+| 1AVG         |      442 |     27.03 s   |      9.50 s   |             82.95 s |       8.7×   |
+| 1C04         |      488 |     26.84 s   |     10.05 s   |             71.93 s |       7.2×   |
+| 1BQL         |      555 |     36.51 s   |     12.43 s   |            105.55 s |       8.5×   |
 
 Median speedups (numba backend, library pre-loaded everywhere):
 
 * **numba vs C++**: 7.8×
 * **numba vs numpy**: 2.8×
-* **`native_only=True`** vs full mode (numba): ~21× faster again — sub-second
-  for everything in this set.
+* **`native_only=True`** vs full mode (numba): ~23× faster again — every
+  structure in this set finishes in **under 0.55 s**, smaller ones in 0.1 s.
 
 Raw data: [docs/timing_results.json](timing_results.json).
 
@@ -62,6 +62,15 @@ The **Numba backend** (`contacts_numba.py`) then replaces the contact
 computation with a JIT-compiled, multi-threaded kernel — ~4.6× faster than the
 already-optimized Python contact step (470-residue structure: 10.9 s → 2.4 s),
 making rotamer building the new dominant cost.
+
+A second numba kernel (`structure._dihedrals_kernel`) batches the
+phi/psi/omega computation across all positions, replacing what used to be a
+per-position `np.cross`/`np.dot` loop. This matters most for `native_only=True`
+runs, where rotamer building is cheap and the dihedral pass would otherwise be
+a sizable fraction of the call: 5TRU (542 residues, `native_only=True`) drops
+from ~0.71 s to ~0.48 s per call. The dihedral arithmetic is hand-scalarized
+over the length-3 vectors so it is bit-equivalent to the original — the
+byte-identity goldens are the canary.
 
 ### Why rotamer building is not (yet) Numba-accelerated
 
