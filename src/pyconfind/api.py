@@ -9,9 +9,8 @@ without re-loading anything.
 Example
 -------
 >>> from pyconfind import analyze
->>> result = analyze("input.pdb", rotamer_library="path/to/rotlibs")
->>> for c in result.report.contacts:
-...     print(c.pos_i, c.pos_j, c.degree)
+>>> result = analyze("input.pdb")  # library auto-downloaded + cached
+>>> result.contacts_dataframe().nlargest(10, "degree")
 """
 
 from __future__ import annotations
@@ -67,7 +66,9 @@ class Analysis:
         The rotamer library used. Reused across multiple calls to avoid
         re-parsing the (large) EBL.out file.
     pdb_path
-        The PDB that was analyzed.
+        Path to the analyzed structure. When ``analyze()`` was called with a
+        pre-parsed :class:`gemmi.Structure`, this falls back to its ``.name``
+        (or ``"<gemmi.Structure>"`` if it has none).
     """
 
     positions: list[PositionRotamers]

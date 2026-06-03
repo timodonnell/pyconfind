@@ -111,9 +111,10 @@ the asymmetric unit as-is.
 ## Rotamer libraries
 
 Out of the box, pyconfind supports the Dunbrack 2010 MSL-format library that
-ships with the upstream confind source (`EBL.out` + `BEBL.out`). Point
-`--rLib` at a directory containing both files (backbone-dependent) or at a
-single EBL.out-style file (backbone-independent).
+ships with the upstream confind source (`EBL.out` + `BEBL.out`); leave
+`--rLib` unset to auto-download it. Point `--rLib` at your own directory
+containing both files to use a different library. Only backbone-dependent
+libraries are supported.
 
 Modern Dunbrack and Richardson-style libraries are next on the roadmap.
 

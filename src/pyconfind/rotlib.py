@@ -25,8 +25,9 @@ A library consists of two files:
 
   where the conf indices select the rotamers active for that bin.
 
-If only an ``EBL.out`` file is given, the library is treated as
-backbone-independent (matches the C++ ``--rLib <file>`` mode).
+Only backbone-dependent libraries are supported: ``load_library`` requires a
+directory containing both ``EBL.out`` and ``BEBL.out`` and rejects a single
+EBL.out-style file with a clear error.
 """
 
 from __future__ import annotations
