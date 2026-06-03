@@ -190,6 +190,25 @@ def read_structure(
     import gemmi
 
     st = gemmi.read_structure(str(path))
+    return atoms_from_gemmi_structure(
+        st, legal_only=legal_only, altloc=altloc, renumber=renumber, assembly=assembly,
+    )
+
+
+def atoms_from_gemmi_structure(
+    structure: Any,
+    *,
+    legal_only: bool = True,
+    altloc: str = "A",
+    renumber: bool = False,
+    assembly: int | str | None = 1,
+) -> Atoms:
+    """Convert an already-parsed :class:`gemmi.Structure` into :class:`Atoms`.
+
+    Equivalent to :func:`read_structure` minus the file I/O step — useful when
+    you've already loaded (or constructed) a gemmi structure and want to skip
+    re-reading it. Parameters mirror :func:`read_structure`.
+    """
     chains: list[str] = []
     resnums: list[int] = []
     icodes: list[str] = []
@@ -202,8 +221,8 @@ def read_structure(
     zs: list[float] = []
     occs: list[float] = []
 
-    if len(st) > 0:
-        model = _resolve_assembly(st, assembly)
+    if len(structure) > 0:
+        model = _resolve_assembly(structure, assembly)
         for chain in model:
             cname = chain.name.strip() or "_"
             for res in chain:

@@ -19,12 +19,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .build import PositionRotamers, build_position_rotamers
 from .contacts import ContactReport, compute_contacts
 from .data import cached_rotamer_library
-from .pdb import filter_atoms_by_position, read_structure
+from .pdb import atoms_from_gemmi_structure, filter_atoms_by_position, read_structure
 from .rotlib import RotamerLibrary, load_library
 from .selection import select_residue_mask
 from .structure import positions_from_atoms
@@ -132,8 +132,25 @@ class Analysis:
         )
 
 
+#: Process-wide cache for the default (auto-downloaded) rotamer library. Lazily
+#: populated on the first :func:`analyze` call that doesn't supply its own
+#: ``rotamer_library`` — reused by every subsequent call. Parsing ``EBL.out``
+#: takes ~5 s on a typical machine and dwarfs the actual analysis on small
+#: structures, so the savings here are dramatic. To force a reload (e.g. in
+#: tests or after switching libraries), set this back to ``None`` via
+#: ``pyconfind.api.DEFAULT_ROTAMER_LIBRARY = None``.
+DEFAULT_ROTAMER_LIBRARY: RotamerLibrary | None = None
+
+
+def _ensure_default_library() -> RotamerLibrary:
+    global DEFAULT_ROTAMER_LIBRARY
+    if DEFAULT_ROTAMER_LIBRARY is None:
+        DEFAULT_ROTAMER_LIBRARY = load_library(cached_rotamer_library())
+    return DEFAULT_ROTAMER_LIBRARY
+
+
 def analyze(
-    pdb_path: str | Path,
+    structure: str | Path | Any,
     rotamer_library: str | Path | RotamerLibrary | None = None,
     *,
     pre_select: str | None = None,
@@ -147,17 +164,23 @@ def analyze(
     backend: str = "auto",
     assembly: int | str | None = 1,
 ) -> Analysis:
-    """Run the full confind pipeline on a PDB file.
+    """Run the full confind pipeline on a structure.
 
     Parameters
     ----------
-    pdb_path
-        Path to the input PDB.
+    structure
+        Path to a PDB/mmCIF file *or* a pre-parsed :class:`gemmi.Structure`.
+        Pass a gemmi structure when you've already loaded (or programmatically
+        built) it and don't want pyconfind to re-read the file.
     rotamer_library
         A backbone-dependent rotamer library directory (containing ``EBL.out``
         + ``BEBL.out``) or a pre-loaded :class:`RotamerLibrary`. If ``None``
         (the default), the Dunbrack 2010 library is downloaded once and cached
-        per-user (see :func:`pyconfind.cached_rotamer_library`).
+        per-user (see :func:`pyconfind.cached_rotamer_library`); the parsed
+        library is then memoized in :data:`DEFAULT_ROTAMER_LIBRARY` so every
+        subsequent call in the same process skips the ~5 s re-parse. For
+        batches with a custom library, build a :class:`RotamerLibrary` once
+        via :func:`load_library` and pass it explicitly.
     pre_select
         MSL selection string (the ``--psel`` flag). Only residues whose CA
         atom satisfies this selection are kept in the structure before
@@ -195,15 +218,23 @@ def analyze(
         two Fab/CTLA-4 complexes; ``assembly=1`` analyzes just one). Pass
         ``None`` to use the asymmetric unit as-is.
     """
-    pdb_path = Path(pdb_path)
     if isinstance(rotamer_library, RotamerLibrary):
         library = rotamer_library
     elif rotamer_library is None:
-        library = load_library(cached_rotamer_library())
+        library = _ensure_default_library()
     else:
         library = load_library(rotamer_library)
-    # gemmi reads both PDB and mmCIF; format is auto-detected.
-    atoms = read_structure(pdb_path, renumber=renumber, assembly=assembly)
+
+    if isinstance(structure, str | Path):
+        pdb_path = Path(structure)
+        # gemmi reads both PDB and mmCIF; format is auto-detected.
+        atoms = read_structure(pdb_path, renumber=renumber, assembly=assembly)
+    else:
+        # Assume an already-parsed gemmi.Structure (duck-typed).
+        atoms = atoms_from_gemmi_structure(
+            structure, renumber=renumber, assembly=assembly,
+        )
+        pdb_path = Path(getattr(structure, "name", "") or "<gemmi.Structure>")
 
     # --psel: keep only residues whose CA satisfies the pre-selection. The
     # C++ applies this on the raw structure before protein-only filtering;
