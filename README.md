@@ -28,10 +28,10 @@ contact-degree backends (both byte-identical to the reference):
   that is ~2-3× faster again.
 
 With the Numba backend and the rotamer library pre-loaded, per-structure
-analysis is **~5-9× faster** than the C++ binary (median ~7.8× over the
-benchmark set), and **`native_only=True`** is another ~23× faster again —
-under 0.55 s for everything in the benchmark set (largest is 555 residues),
-and ~0.1 s for small structures.
+analysis is **~5-9× faster** than the C++ binary in full mode (median ~7.8×
+over the benchmark set). **`native_only=True`** runs an additional ~23×
+faster again — under 0.55 s for everything in the benchmark set (largest
+555 residues), and ~0.1 s for small ones.
 
 ![runtime vs sequence length](docs/timing_vs_length.png)
 
