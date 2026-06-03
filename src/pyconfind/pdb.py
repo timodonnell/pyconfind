@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -163,6 +164,7 @@ def read_structure(
     legal_only: bool = True,
     altloc: str = "A",
     renumber: bool = False,
+    assembly: int | str | None = 1,
 ) -> Atoms:
     """Read a PDB or mmCIF structure via gemmi into :class:`Atoms`.
 
@@ -173,6 +175,17 @@ def read_structure(
 
     Parameters mirror :func:`read_pdb` (``legal_only``, ``altloc``,
     ``renumber``).
+
+    Parameters
+    ----------
+    assembly
+        Which biological assembly to use. ``1`` (the default) selects the first
+        bio assembly defined in the file — for the common case of an asymmetric
+        unit containing multiple independent copies (e.g. 5TRU), this restricts
+        analysis to a single complex instead of pooling all copies. ``None``
+        uses the asymmetric unit as-is. Pass an explicit assembly name (string)
+        or 1-based index (int) to select a specific one. If the file declares
+        no assemblies, the asymmetric unit is used regardless.
     """
     import gemmi
 
@@ -190,7 +203,7 @@ def read_structure(
     occs: list[float] = []
 
     if len(st) > 0:
-        model = st[0]
+        model = _resolve_assembly(st, assembly)
         for chain in model:
             cname = chain.name.strip() or "_"
             for res in chain:
@@ -224,6 +237,33 @@ def read_structure(
         chains, resnums, icodes, resnames, names, altlocs, elements,
         xs, ys, zs, occs, renumber=renumber,
     )
+
+
+def _resolve_assembly(st: Any, assembly: int | str | None) -> Any:
+    """Return the gemmi.Model to iterate, applying the requested bio assembly.
+
+    Returns the asymmetric-unit model (``st[0]``) if ``assembly is None`` or if
+    the file declares no assemblies. Otherwise looks the assembly up by name
+    (case-insensitive string match) — accepts ``1``, ``"1"``, ``"PISA1"``, etc.
+    Uses ``HowToNameCopiedChain.Short`` so single-copy assemblies (the common
+    case) keep their original chain IDs.
+    """
+    import gemmi
+
+    if assembly is None or not st.assemblies:
+        return st[0]
+    target_name = str(assembly)
+    match = next(
+        (a for a in st.assemblies if a.name == target_name),
+        None,
+    )
+    if match is None:
+        names = [a.name for a in st.assemblies]
+        raise ValueError(
+            f"assembly {target_name!r} not found in structure "
+            f"(available: {names}). Pass assembly=None to use the asymmetric unit."
+        )
+    return gemmi.make_assembly(match, st[0], gemmi.HowToNameCopiedChain.Short)
 
 
 def _finalize_atoms(

@@ -51,6 +51,7 @@ from .rotlib import load_library
 @click.option("--contact-dist", "contact_dist", type=float, default=3.0, show_default=True, help="Sidechain-sidechain contact distance cutoff.")
 @click.option("--clash-dist", "clash_dist", type=float, default=2.0, show_default=True, help="Backbone-clash distance cutoff.")
 @click.option("--backend", "backend", type=click.Choice(["auto", "numba", "python"]), default="auto", show_default=True, help="Contact-degree backend (numba = JIT/multithreaded, python = reference).")
+@click.option("--assembly", "assembly", type=str, default="1", show_default=True, help="Biological assembly to analyze. Use 'au' for the asymmetric unit as-is.")
 def main(
     pdb_file: Path | None,
     pdb_list_file: Path | None,
@@ -69,6 +70,7 @@ def main(
     contact_dist: float,
     clash_dist: float,
     backend: str,
+    assembly: str,
 ) -> None:
     """Analyze rotamer contacts in protein structures.
 
@@ -114,6 +116,7 @@ def main(
     # first use).
     library = load_library(rotlib_path if rotlib_path is not None else cached_rotamer_library())
 
+    assembly_arg: str | None = None if assembly.lower() in ("au", "") else assembly
     for pdb_path, out_path in zip(pdb_paths, out_paths, strict=True):
         analysis = analyze(
             pdb_path,
@@ -126,6 +129,7 @@ def main(
             contact_distance=contact_dist,
             clash_distance=clash_dist,
             backend=backend,
+            assembly=assembly_arg,
         )
         options = OutputOptions(
             include_phi_psi=include_pp,

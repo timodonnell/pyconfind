@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .build import PositionRotamers, build_position_rotamers
 from .contacts import ContactReport, compute_contacts
@@ -27,6 +28,9 @@ from .pdb import filter_atoms_by_position, read_structure
 from .rotlib import RotamerLibrary, load_library
 from .selection import select_residue_mask
 from .structure import positions_from_atoms
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def _select_contact_backend(backend: str) -> Callable[..., ContactReport]:
@@ -71,6 +75,62 @@ class Analysis:
     library: RotamerLibrary
     pdb_path: Path
 
+    def positions_dataframe(self) -> pd.DataFrame:  # noqa: F821
+        """Return a :class:`pandas.DataFrame` of per-residue scores.
+
+        One row per position. Columns: ``chain``, ``resnum``, ``icode``,
+        ``resname``, ``sumcond`` (sum contact degree), ``crwdnes``,
+        ``freedom``, ``n_rotamers`` (placed and survived), ``n_rotamers_placed``
+        (before pruning), ``fraction_pruned``, ``in_focus``.
+        """
+        import pandas as pd
+
+        rep = self.report
+        return pd.DataFrame(
+            {
+                "chain": [p.position.chain for p in self.positions],
+                "resnum": [p.position.resnum for p in self.positions],
+                "icode": [p.position.icode for p in self.positions],
+                "resname": [p.position.resname for p in self.positions],
+                "sumcond": rep.sum_contact_degree,
+                "crwdnes": rep.crwdnes,
+                "freedom": rep.freedom,
+                "n_rotamers": [len(p.rotamers) for p in self.positions],
+                "n_rotamers_placed": [p.num_rotamers_placed for p in self.positions],
+                "fraction_pruned": [p.fraction_pruned for p in self.positions],
+                "in_focus": [p.in_focus for p in self.positions],
+            }
+        )
+
+    def contacts_dataframe(self) -> pd.DataFrame:  # noqa: F821
+        """Return a :class:`pandas.DataFrame` of pairwise contacts.
+
+        One row per contact pair (the lower-triangular form — each pair
+        appears once). Columns: ``chain_i``/``resnum_i``/``icode_i``/
+        ``resname_i``, same for ``_j``, and ``degree``.
+        """
+        import pandas as pd
+
+        pos = [p.position for p in self.positions]
+        rows = []
+        for c in self.report.contacts:
+            pi, pj = pos[c.pos_i], pos[c.pos_j]
+            rows.append(
+                (
+                    pi.chain, pi.resnum, pi.icode, pi.resname,
+                    pj.chain, pj.resnum, pj.icode, pj.resname,
+                    c.degree,
+                )
+            )
+        return pd.DataFrame(
+            rows,
+            columns=[
+                "chain_i", "resnum_i", "icode_i", "resname_i",
+                "chain_j", "resnum_j", "icode_j", "resname_j",
+                "degree",
+            ],
+        )
+
 
 def analyze(
     pdb_path: str | Path,
@@ -85,6 +145,7 @@ def analyze(
     renumber: bool = False,
     native_only: bool = False,
     backend: str = "auto",
+    assembly: int | str | None = 1,
 ) -> Analysis:
     """Run the full confind pipeline on a PDB file.
 
@@ -127,6 +188,12 @@ def analyze(
         ``"python"`` (pure NumPy/SciPy reference), or ``"auto"`` (the default —
         use Numba if importable, else fall back to the reference). Both
         backends produce results identical to ~1e-6 (the output precision).
+    assembly
+        Biological assembly to analyze. ``1`` (the default) picks the first
+        bio assembly declared in the file — important for structures whose
+        asymmetric unit contains multiple independent copies (e.g. 5TRU has
+        two Fab/CTLA-4 complexes; ``assembly=1`` analyzes just one). Pass
+        ``None`` to use the asymmetric unit as-is.
     """
     pdb_path = Path(pdb_path)
     if isinstance(rotamer_library, RotamerLibrary):
@@ -136,7 +203,7 @@ def analyze(
     else:
         library = load_library(rotamer_library)
     # gemmi reads both PDB and mmCIF; format is auto-detected.
-    atoms = read_structure(pdb_path, renumber=renumber)
+    atoms = read_structure(pdb_path, renumber=renumber, assembly=assembly)
 
     # --psel: keep only residues whose CA satisfies the pre-selection. The
     # C++ applies this on the raw structure before protein-only filtering;

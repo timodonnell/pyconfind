@@ -88,17 +88,19 @@ pyconfind --p input.pdb --rLib path/to/rotlibs --o out.cont
 Library API:
 
 ```python
-from pyconfind import analyze, format_confind_text
+from pyconfind import analyze
 
-result = analyze("input.pdb")  # rotamer library auto-downloaded + cached
-print(format_confind_text(result.positions, result.report))
-
-# Inspect raw contacts:
-for c in result.report.contacts:
-    pi, pj = result.positions[c.pos_i], result.positions[c.pos_j]
-    print(f"{pi.position.chain},{pi.position.resnum} <-> "
-          f"{pj.position.chain},{pj.position.resnum}: degree={c.degree}")
+result = analyze("input.pdb")           # library auto-downloaded + cached
+positions = result.positions_dataframe()  # one row per residue
+contacts  = result.contacts_dataframe()   # one row per residue-residue contact
+contacts.nlargest(10, "degree")
 ```
+
+`analyze()` takes an `assembly=` argument too — by default it picks the first
+biological assembly, which is what you want for crystal structures whose
+asymmetric unit contains multiple independent copies of the complex
+(e.g. antibody/antigen structures like 5TRU). Pass `assembly=None` to keep
+the asymmetric unit as-is.
 
 ## Rotamer libraries
 

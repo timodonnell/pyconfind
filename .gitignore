@@ -223,3 +223,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Notebook execution artifacts
+/examples/*.pdb
+/examples/rotlibs/
