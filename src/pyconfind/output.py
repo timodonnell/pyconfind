@@ -213,6 +213,9 @@ def format_json(
 ) -> str:
     """Render as JSON. The structured format is the modern default.
 
+    When ``--sel`` / ``focus`` is in effect, only in-focus positions are
+    emitted here, matching the legacy text formatter.
+
     The JSON shape is:
 
     .. code-block:: json
@@ -234,8 +237,11 @@ def format_json(
           "sequence": ["ALA", "ILE", "ALA"]
         }
     """
+    focus_idx = [i for i, pr in enumerate(positions) if pr.in_focus]
+
     positions_json = []
-    for i, pr in enumerate(positions):
+    for i in focus_idx:
+        pr = positions[i]
         pos = pr.position
         positions_json.append(
             {
@@ -279,7 +285,7 @@ def format_json(
     payload: dict[str, object] = {
         "positions": positions_json,
         "contacts": contacts_json,
-        "sequence": [pr.position.resname for pr in positions],
+        "sequence": [positions[i].position.resname for i in focus_idx],
     }
     if options.pdb_filename is not None:
         payload["pdb_filename"] = options.pdb_filename

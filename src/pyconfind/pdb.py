@@ -38,7 +38,7 @@ class Atoms:
     appear in input order; atoms within an identity appear in input order.
     """
 
-    chain: np.ndarray       # (N,) <U2
+    chain: np.ndarray       # (N,) unicode; width sized to longest chain id
     resnum: np.ndarray      # (N,) int32
     icode: np.ndarray       # (N,) <U1
     resname: np.ndarray     # (N,) <U4
@@ -258,30 +258,54 @@ def atoms_from_gemmi_structure(
     )
 
 
+def _select_assembly_definition(
+    assemblies: list[Any], assembly: int | str | None
+) -> Any | None:
+    """Resolve a bio-assembly selector to one assembly definition.
+
+    Selection rules, in order:
+
+    * ``None`` (or no assemblies) -> asymmetric unit, signaled via ``None``
+    * case-insensitive exact name match (e.g. ``"PISA1"``)
+    * 1-based numeric index, for ``1`` / ``"1"`` / ``2`` / ...
+    """
+    if assembly is None or not assemblies:
+        return None
+
+    target_name = str(assembly)
+    target_lower = target_name.lower()
+    for candidate in assemblies:
+        if candidate.name.lower() == target_lower:
+            return candidate
+
+    if isinstance(assembly, int) or target_name.isdigit():
+        idx = int(target_name) - 1
+        if 0 <= idx < len(assemblies):
+            return assemblies[idx]
+
+    names = [a.name for a in assemblies]
+    raise ValueError(
+        f"assembly {target_name!r} not found in structure "
+        f"(available: {names}). Pass assembly=None to use the asymmetric unit."
+    )
+
+
 def _resolve_assembly(st: Any, assembly: int | str | None) -> Any:
     """Return the gemmi.Model to iterate, applying the requested bio assembly.
 
     Returns the asymmetric-unit model (``st[0]``) if ``assembly is None`` or if
-    the file declares no assemblies. Otherwise looks the assembly up by name
-    (case-insensitive string match) — accepts ``1``, ``"1"``, ``"PISA1"``, etc.
-    Uses ``HowToNameCopiedChain.Short`` so single-copy assemblies (the common
-    case) keep their original chain IDs.
+    the file declares no assemblies. Otherwise first tries a case-insensitive
+    exact name match (e.g. ``"PISA1"``), then falls back to a 1-based numeric
+    index for selectors like ``1`` / ``"1"``. Uses
+    ``HowToNameCopiedChain.Short`` so single-copy assemblies (the common case)
+    keep their original chain IDs.
     """
     import gemmi
 
-    if assembly is None or not st.assemblies:
-        return st[0]
-    target_name = str(assembly)
-    match = next(
-        (a for a in st.assemblies if a.name == target_name),
-        None,
-    )
+    assemblies = list(st.assemblies)
+    match = _select_assembly_definition(assemblies, assembly)
     if match is None:
-        names = [a.name for a in st.assemblies]
-        raise ValueError(
-            f"assembly {target_name!r} not found in structure "
-            f"(available: {names}). Pass assembly=None to use the asymmetric unit."
-        )
+        return st[0]
     return gemmi.make_assembly(match, st[0], gemmi.HowToNameCopiedChain.Short)
 
 
@@ -306,7 +330,11 @@ def _finalize_atoms(
     positions to match MSL's chain ordering, and optionally renumbers.
     """
     n = len(xs)
-    chain_arr = np.asarray(chains, dtype="<U2") if n else np.zeros(0, dtype="<U2")
+    if n:
+        max_chain_len = max(len(ch) for ch in chains)
+        chain_arr = np.asarray(chains, dtype=f"<U{max(1, max_chain_len)}")
+    else:
+        chain_arr = np.zeros(0, dtype="<U1")
     resnum_arr = np.asarray(resnums, dtype=np.int32) if n else np.zeros(0, dtype=np.int32)
     icode_arr = np.asarray(icodes, dtype="<U1") if n else np.zeros(0, dtype="<U1")
     resname_arr = np.asarray(resnames, dtype="<U4") if n else np.zeros(0, dtype="<U4")

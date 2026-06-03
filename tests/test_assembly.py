@@ -10,10 +10,12 @@ assembly, so the default is byte-safe for them.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from pyconfind import read_structure
+from pyconfind.pdb import _select_assembly_definition
 
 STRUCT = Path(__file__).resolve().parent / "data" / "structures"
 
@@ -46,3 +48,10 @@ def test_assembly_default_byte_safe_for_monomers() -> None:
         as_au = read_structure(STRUCT / f"{pdb}.pdb", assembly=None)
         assert len(with_default.chain) == len(as_au.chain)
         assert (with_default.xyz == as_au.xyz).all()
+
+
+def test_select_assembly_definition_accepts_numeric_index_and_name() -> None:
+    assemblies = [SimpleNamespace(name="PISA1"), SimpleNamespace(name="PISA2")]
+    assert _select_assembly_definition(assemblies, 1) is assemblies[0]
+    assert _select_assembly_definition(assemblies, "2") is assemblies[1]
+    assert _select_assembly_definition(assemblies, "pisa2") is assemblies[1]
