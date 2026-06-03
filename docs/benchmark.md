@@ -13,19 +13,35 @@ faster again on top of that.
 
 ## Numbers
 
-Per-structure analysis (rotamer library already loaded — the realistic batch
-case), best of several runs.
+Per-structure analysis time vs. sequence length, rotamer library pre-loaded
+and **excluded from every measurement** (the realistic batch case). Eleven
+structures spanning ~88-555 residues, measured on the same machine. C++
+library-load wall time (~6.6 s on the bench machine) was measured separately
+via ``confind --pL`` and subtracted from each C++ data point so it isn't
+counted twice.
 
-| Structure    | Residues | py backend | numba backend | numba speedup | vs C++ (per-structure) |
-|--------------|---------:|-----------:|--------------:|--------------:|-----------------------:|
-| example0002  |       28 |    1.13 s  |       0.55 s  |        2.1×   |          ~18×          |
-| 1UBQ         |       76 |    4.44 s  |       1.76 s  |        2.5×   |          ~10×          |
-| AF-A1L3X0-F1 |     ~470 |   14.70 s  |       6.04 s  |        2.4×   |           ~8×          |
-| 1CBW         |      594 |   35.68 s  |      12.32 s  |        2.9×   |           ~8×          |
+| Structure    | Residues | numpy backend | numba backend | C++ (analysis only) | numba vs C++ |
+|--------------|---------:|--------------:|--------------:|--------------------:|-------------:|
+| AF-A1L190-F1 |       88 |      3.11 s   |      1.62 s   |              8.46 s |       5.2×   |
+| AF-A6NNB3-F1 |      132 |      5.12 s   |      2.64 s   |             14.37 s |       5.4×   |
+| AF-A6NI61-F1 |      221 |     10.54 s   |      4.54 s   |             30.42 s |       6.7×   |
+| 1AB9         |      242 |     14.42 s   |      5.04 s   |             39.21 s |       7.8×   |
+| AF-A1L3X0-F1 |      281 |     14.71 s   |      6.13 s   |             44.74 s |       7.3×   |
+| 1C08         |      350 |     22.32 s   |      7.73 s   |             64.34 s |       8.3×   |
+| 1B0R         |      375 |     23.34 s   |      8.35 s   |             69.00 s |       8.3×   |
+| 1BWU         |      430 |     26.66 s   |      9.18 s   |             76.38 s |       8.3×   |
+| 1AVG         |      442 |     27.92 s   |      9.78 s   |             80.89 s |       8.3×   |
+| 1C04         |      488 |     26.93 s   |     10.05 s   |             71.73 s |       7.1×   |
+| 1BQL         |      555 |     36.23 s   |     12.73 s   |            105.77 s |       8.3×   |
 
-The one-time rotamer-library load (~3.4 s) is excluded — it is amortized when
-processing a batch. The C++ binary re-parses the library on every invocation,
-so cold single-shot speedups are larger still.
+Median speedups (numba backend, library pre-loaded everywhere):
+
+* **numba vs C++**: 7.8×
+* **numba vs numpy**: 2.8×
+* **`native_only=True`** vs full mode (numba): ~21× faster again — sub-second
+  for everything in this set.
+
+Raw data: [docs/timing_results.json](timing_results.json).
 
 ## Where the time goes
 
@@ -61,8 +77,15 @@ degree, never a discrete decision.
 ## Reproduce
 
 ```bash
-python scripts/benchmark.py \
+python scripts/benchmark_v2.py \
     --rLib original-source/confind-msl/rotlibs \
-    --cpp-binary original-source/confind-msl/mslib/bin/confind \
+    --cpp  original-source/confind-msl/mslib/bin/confind \
+    --tiny tests/data/structures/1CRN.pdb \
+    --out  docs/timing_results.json \
     <structure.pdb> [<structure2.pdb> ...]
+
+python scripts/plot_timing_vs_length.py
 ```
+
+``--tiny`` is the small reference PDB used to measure the C++ library-load
+overhead (subtracted from each C++ data point so the comparison is fair).

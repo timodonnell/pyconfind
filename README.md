@@ -27,14 +27,19 @@ contact-degree backends (both byte-identical to the reference):
 * an optional **Numba** JIT/multi-threaded backend (`pip install pyconfind[fast]`)
   that is ~2-3× faster again.
 
-With the Numba backend and the rotamer library amortized across a batch, the
-per-structure analysis is **~8-18× faster** than the C++ binary.
+With the Numba backend and the rotamer library pre-loaded, per-structure
+analysis is **~5-8× faster** than the C++ binary (median ~7.8× over the
+benchmark set), and **`native_only=True`** is another ~20× faster again —
+sub-second for hundreds of residues.
 
 ![runtime vs sequence length](docs/timing_vs_length.png)
 
-Runtime scales sub-quadratically with sequence length (the CA-distance cutoff
-bounds each residue's neighbor count). See [docs/benchmark.md](docs/benchmark.md)
-for details.
+Left: full analysis (every position considers all 18 substitutable AAs).
+Right: `native_only=True` — only the native AA is placed at each position
+(see [native-only mode](#native-only-mode-extension-over-the-c-binary)). The
+rotamer library is loaded once before measurement and excluded from every
+timing, so the numbers reflect per-structure analysis only. See
+[docs/benchmark.md](docs/benchmark.md) for the structure set and the harness.
 
 ## Install
 

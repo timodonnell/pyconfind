@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Plot runtime as a function of sequence length (residue count).
+"""Two-panel runtime-vs-sequence-length plot for the README.
 
-Consumes the JSON produced by the timing harness — a list of
-``{"pdb", "nres", "py", "cpp"}`` records — and plots pyconfind vs. C++
-runtime against residue count, with power-law fits to show the scaling.
+Consumes ``docs/timing_results.json`` (a dict of ``{cpp_load_seconds, rows}``
+where each row is ``{pdb, nres, py_numpy, py_numba, cpp,
+py_numpy_native, py_numba_native}``). Library load time is excluded for both
+implementations.
+
+Left panel — ``native_only=False``:
+    pyconfind (numpy), pyconfind (numba), ConFind (original)
+
+Right panel — ``native_only=True`` (the C++ binary lacks this mode):
+    pyconfind (numpy), pyconfind (numba)
 """
 
 from __future__ import annotations
@@ -18,108 +25,61 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-def _fit_power_law(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
-    """Fit ``y = a * x^b``; return ``(a, b)``."""
-    mask = (x > 0) & (y > 0)
-    b, log_a = np.polyfit(np.log(x[mask]), np.log(y[mask]), 1)
-    return float(np.exp(log_a)), float(b)
+PY_NUMPY = "#2563eb"  # blue
+PY_NUMBA = "#16a34a"  # green
+CPP      = "#dc2626"  # red
 
 
-def _fit_offset_power_law(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float]:
-    """Fit ``y = c + a * x^b`` (fixed overhead + algorithmic term).
-
-    Returns ``(c, a, b)``. Falls back to a pure power law (c=0) if the
-    nonlinear fit fails to converge.
-    """
-    try:
-        from scipy.optimize import curve_fit
-    except ImportError:
-        a, b = _fit_power_law(x, y)
-        return 0.0, a, b
-
-    def model(n: np.ndarray, c: float, a: float, b: float) -> np.ndarray:
-        return c + a * np.power(n, b)
-
-    a0, b0 = _fit_power_law(x, y)
-    try:
-        popt, _ = curve_fit(
-            model, x, y, p0=[0.0, a0, b0],
-            bounds=([0, 0, 0.3], [np.inf, np.inf, 3.0]), maxfev=20000,
-        )
-        return float(popt[0]), float(popt[1]), float(popt[2])
-    except Exception:
-        return 0.0, a0, b0
-
-
-def _fit_label(c: float, a: float, b: float) -> str:
-    """Format a fit as ``a·N^b`` (plus a ``c +`` prefix only if non-negligible)."""
-    term = f"{a:.1e}·N^{b:.2f}"
-    return f"{c:.1f}s + {term}" if c >= 0.05 else f"∝ N^{b:.2f}"
+def _scatter(ax, x, y, color, label) -> None:
+    order = np.argsort(x)
+    x, y = x[order], y[order]
+    ax.plot(x, y, "-", color=color, lw=1.0, alpha=0.6)
+    ax.scatter(x, y, s=36, color=color, alpha=0.85, label=label, zorder=3,
+               edgecolors="white", linewidths=0.6)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, default=Path("/tmp/timing_results.json"))
-    parser.add_argument("--out", type=Path, default=Path("docs/timing_vs_length.png"))
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--data", type=Path, default=Path("docs/timing_results.json"))
+    ap.add_argument("--out",  type=Path, default=Path("docs/timing_vs_length.png"))
+    args = ap.parse_args()
 
-    rows = json.loads(args.data.read_text())
-    nres = np.array([r["nres"] for r in rows], dtype=float)
-    py = np.array([r["py"] for r in rows], dtype=float)
-    cpp = np.array([r["cpp"] for r in rows], dtype=float)
+    payload = json.loads(args.data.read_text())
+    rows = payload["rows"] if isinstance(payload, dict) else payload
+    nres   = np.array([r["nres"] for r in rows], dtype=float)
+    py_np  = np.array([r["py_numpy"] for r in rows], dtype=float)
+    py_nb  = np.array([r["py_numba"] for r in rows], dtype=float)
+    cpp    = np.array([r["cpp"] for r in rows], dtype=float)
+    py_np_n = np.array([r["py_numpy_native"] for r in rows], dtype=float)
+    py_nb_n = np.array([r["py_numba_native"] for r in rows], dtype=float)
 
-    order = np.argsort(nres)
-    nres, py, cpp = nres[order], py[order], cpp[order]
+    fig, (ax_full, ax_nat) = plt.subplots(1, 2, figsize=(13, 5.2))
 
-    # Offset power-law fit (fixed overhead + algorithmic term) separates each
-    # implementation's constant startup cost from its true scaling exponent.
-    py_c, py_a, py_b = _fit_offset_power_law(nres, py)
-    cpp_c, cpp_a, cpp_b = _fit_offset_power_law(nres, cpp)
+    _scatter(ax_full, nres, py_np, PY_NUMPY, "pyconfind (numpy)")
+    _scatter(ax_full, nres, py_nb, PY_NUMBA, "pyconfind (numba)")
+    _scatter(ax_full, nres, cpp,   CPP,      "ConFind (original)")
+    ax_full.set_title("native_only=False")
 
-    fig, (ax_lin, ax_log) = plt.subplots(1, 2, figsize=(13, 5.5))
-    xx = np.linspace(nres.min(), nres.max(), 200)
+    _scatter(ax_nat, nres, py_np_n, PY_NUMPY, "pyconfind (numpy)")
+    _scatter(ax_nat, nres, py_nb_n, PY_NUMBA, "pyconfind (numba)")
+    ax_nat.set_title("native_only=True")
 
-    for ax in (ax_lin, ax_log):
-        ax.scatter(nres, cpp, s=28, color="#dc2626", alpha=0.8,
-                   label="C++ confind (incl. per-run library load)", zorder=3)
-        ax.scatter(nres, py, s=28, color="#2563eb", alpha=0.8,
-                   label="pyconfind (library amortized)", zorder=3)
-        ax.plot(xx, cpp_c + cpp_a * xx**cpp_b, "--", color="#dc2626", lw=1.2,
-                label=f"C++ fit: {_fit_label(cpp_c, cpp_a, cpp_b)}")
-        ax.plot(xx, py_c + py_a * xx**py_b, "--", color="#2563eb", lw=1.2,
-                label=f"pyconfind fit: {_fit_label(py_c, py_a, py_b)}")
+    for ax in (ax_full, ax_nat):
         ax.set_xlabel("Sequence length (residues)")
         ax.set_ylabel("Runtime per structure (s)")
         ax.grid(True, alpha=0.25)
-
-    ax_lin.set_title("Linear scale")
-    ax_lin.legend(fontsize=8)
-    ax_log.set_xscale("log")
-    ax_log.set_yscale("log")
-    ax_log.set_title("Log-log scale")
-    ax_log.legend(fontsize=8)
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
+        ax.legend(fontsize=9, loc="upper left", frameon=True)
 
     fig.suptitle(
-        "confind runtime vs. sequence length\n"
-        "fit: fixed overhead + a·N^b (separates per-run startup from scaling); "
-        "pyconfind library load is amortized, C++ reloads it each run",
-        fontsize=12, fontweight="bold",
+        "Per-structure runtime vs. sequence length (rotamer library pre-loaded)",
+        fontsize=13, fontweight="bold",
     )
     fig.tight_layout()
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out, dpi=140, bbox_inches="tight")
     print(f"Saved {args.out}")
-    print(f"\npyconfind: runtime ≈ {py_c:.2f}s + {py_a:.2e} · N^{py_b:.2f}")
-    print(f"C++:       runtime ≈ {cpp_c:.2f}s + {cpp_a:.2e} · N^{cpp_b:.2f}")
-    # Fair algorithmic comparison: ratio of the N-dependent coefficients at the
-    # largest N tested (overhead-subtracted).
-    n_max = nres.max()
-    py_algo = py_a * n_max**py_b
-    cpp_algo = cpp_a * n_max**cpp_b
-    print(f"\nAt N={int(n_max)}: algorithmic time (overhead-subtracted) "
-          f"py={py_algo:.1f}s vs cpp={cpp_algo:.1f}s → {cpp_algo/py_algo:.1f}×")
-    print(f"Median wall-clock speedup (cpp/py, as invoked): {np.median(cpp / py):.2f}×")
     return 0
 
 
