@@ -161,7 +161,7 @@ if _HAS_NUMBA:
         _place_batch_kernel_python, cache=True, fastmath=False, error_model="numpy",
     )
 else:  # pragma: no cover
-    _place_batch_kernel = _place_batch_kernel_python
+    _place_batch_kernel = _place_batch_numpy
 
 
 def place_batch(

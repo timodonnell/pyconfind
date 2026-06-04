@@ -6,11 +6,14 @@ The direct placement check uses 1CRN's rotamer dump from the reference binary
 
 from __future__ import annotations
 
+import importlib
+import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+import pyconfind.geometry as geometry
 from pyconfind.geometry import place_batch, place_one
 from pyconfind.pdb import read_structure
 from pyconfind.rotamers import place_rotamers
@@ -56,6 +59,17 @@ def test_place_batch_matches_place_one() -> None:
         np.testing.assert_allclose(
             batched[i], place_one(a[i], b[i], c[i], bond[i], angle[i], dih[i]), atol=1e-10
         )
+
+
+def test_place_batch_without_numba_uses_numpy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "numba", None)
+    reloaded = importlib.reload(geometry)
+    try:
+        assert reloaded._HAS_NUMBA is False
+        assert reloaded._place_batch_kernel is reloaded._place_batch_numpy
+    finally:
+        monkeypatch.undo()
+        importlib.reload(geometry)
 
 
 def _parse_rout(path: Path) -> dict[tuple[str, int, str, int], dict[str, np.ndarray]]:
